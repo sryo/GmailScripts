@@ -15,7 +15,6 @@ function RemoveEmptyLabels() {
   offset = offset++;
   for (var i = offset; i < offset+limit; i++) {
    var threads = labels[i].getThreads();
-    Logger.log(labels[i].getName());
     if (threads == "") {
       labels[i].deleteLabel();
     }
