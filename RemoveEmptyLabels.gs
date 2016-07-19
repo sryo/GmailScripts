@@ -13,7 +13,7 @@ function RemoveEmptyLabels() {
   }
   // convert offset from string to number
   offset = offset++;
-  for (var i = offset; i < offset+limit; i++) {
+  for (var i = offset; i < offset+limit-1; i++) {
    var threads = labels[i].getThreads();
     if (threads == "") {
       labels[i].deleteLabel();
