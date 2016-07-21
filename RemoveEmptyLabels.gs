@@ -8,12 +8,12 @@ function RemoveEmptyLabels() {
   var limit = 25;
   var userProperties = PropertiesService.getUserProperties();
   var offset = userProperties.getProperty('offset');
-  if (offset == null || offset >= labels.length-1) {
+  if (offset == null || offset >= labels.length) {
    offset = 0;
   }
   // convert offset from string to number
   offset = offset++;
-  for (var i = offset; i < offset+limit-1; i++) {
+  for (var i = offset; i < offset+limit && i < labels.length-1; i++) {
    var threads = labels[i].getThreads();
     if (threads == "") {
       labels[i].deleteLabel();
