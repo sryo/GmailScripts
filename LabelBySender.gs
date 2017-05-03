@@ -11,9 +11,13 @@ var messages = GmailApp.getMessagesForThreads(threads);
     for (var j = 0; j < messages[i].length; j++) {
       var senderName = {};
       var sender = messages[i][j].getFrom().split(/\s+/);
+      Logger.log(sender);
       if (sender.length > 1) {
         sender.pop();
         senderName = sender.join(" ");
+      }
+      else {
+      senderName = sender
       }
       var label = GmailApp.getUserLabelByName(senderName);
   
