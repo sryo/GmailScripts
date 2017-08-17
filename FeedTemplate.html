@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_blank">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0;">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="red">
+
+
+<script>
+window.scrollTo(0,1);
+</script>
+
+<style>
+@import url('https://fonts.googleapis.com/css?family=Poppins:400,700');
+* {
+line-height-step: 19px;
+line-height: 1.2;
+margin: 0;
+}
+h1,h2 {display: inline-block;}
+body {
+font-family: 'Poppins', sans-serif;
+text-rendering: optimizeLegibility;
+font-size: 16px;
+}
+
+.unread {
+text-align: center;
+}
+.date {
+font-weight: 700;
+}
+.item {
+margin: 4em 2em;
+width: 70vw;
+}
+.item .sender {font-size:.75em; font-weight: 700;}
+.item .message .body{
+}
+.item .message:focus-within {
+position: absolute;
+top:1em;
+bottom:1em;
+background: white;
+}
+input[name="message"] {
+position: absolute;
+left: -1000px;
+}
+.item .message {
+background: #eee;
+border-radius: 0 2em 2em 2em;
+}
+.item .body:before,
+.item .body:after {
+content:'';
+display:block;
+height: 2em;
+}
+.item .body {
+overflow-wrap: break-word;
+word-wrap: break-word;
+overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+}
+.item .sender:not(:first-of-type) {
+margin-top: 1rem;
+}
+</style>
+
+</head>
+<body>
+<div class="unread">
+<h1><?= GmailApp.getInboxUnreadCount() + ' elementos pendientes' ?></h1>
+</div>
+<?
+var threads = GmailApp.getInboxThreads();
+for (var i=0; i < threads.length; i++) {
+var threads = GmailApp.getInboxThreads();
+for (var i=0; i < threads.length; i++) {
+?>
+<div class="item" id="<?= threads[i].getId() ?>">
+<h2><?= threads[i].getFirstMessageSubject() ?></h2>
+
+<?
+
+var messages = threads[i].getMessages();
+
+for (var j=0; j < messages.length; j++) {
+if (!messages[j].isUnread()) {
+continue; 
+}
+?>
+
+<div class="sender">
+<?= messages[j].getFrom();?>
+</div>
+<label><div class="message">
+<input type="radio" name="message" id="<?= messages[j].getId()?>" />
+<div class="body">
+<?!= (messages[j].getBody());?>
+</div>
+
+</div></label>
+
+<?
+}
+?></div><?
+}
+}
+?>
+</body>
+</html>
