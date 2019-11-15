@@ -64,7 +64,6 @@ function listLabelHide(labelName) {
   for (var i = 0; i < response.labels.length; i++) {
     var label = response.labels[i]
     if (label.name == labelName)
-    Logger.log(label.id);
     Gmail.Users.Labels.update({
     'labelListVisibility': 'labelHide'
   }, 'me', label.id);
