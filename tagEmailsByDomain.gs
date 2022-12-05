@@ -17,7 +17,10 @@ function tagEmailsByDomain() {
 
       // Extract the domain from the sender's email address
       var match = sender.match(/@([^@.]+)\.[^@]+$/);
-      if (match != null) {
+      if (match == null) {
+        // Log a message if the regular expression did not match
+        Logger.log("Could not extract domain from message in thread: " + threads[i].getPermalink());
+      } else {
         var domain = match[1];
 
         // Check if the label already exists
@@ -28,6 +31,10 @@ function tagEmailsByDomain() {
           listLabelHide(domain);
         }
         label.addToThread(threads[i]);
+        // Get the sender's name from the email address
+        var senderName = sender.match(/^([^<]*)</)[1].trim();
+        // Log a message indicating that the label was added to the thread
+        Logger.log("Added label '" + domain + "' to a thread from '" + senderName + "'");
       }
     }
   }
