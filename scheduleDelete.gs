@@ -1,3 +1,7 @@
+/* 
+Script that schedules unimportant mails for deletion
+Author: Mateo Yadarola (teodalton@gmail.com)
+*/
 
 function deleteLowPriority() {
   // Set the label to use for threads that should be deleted after 30 days
