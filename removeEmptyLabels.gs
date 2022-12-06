@@ -1,3 +1,9 @@
+
+/* 
+Script that deletes unused labels in batches
+Author: Mateo Yadarola (teodalton@gmail.com)
+*/
+
 function removeEmptyLabels() {
   var labels = GmailApp.getUserLabels();
   var limit = 30;
