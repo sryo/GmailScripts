@@ -37,7 +37,6 @@ function writeThreadsToHtml(threadArray) {
   var html = "<html><head><title>Public Threads</title></head><body>";
   for (var i = 0; i < threadArray.length; i++) {
     var thread = threadArray[i];
-    html += "<h1>" + thread.id + "</h1>";
     for (var j = 0; j < thread.messages.length; j++) {
       var message = thread.messages[j];
       html += "<h2>" + message.subject + "</h2>";
@@ -57,11 +56,12 @@ function publishPublicThreads() {
     GmailApp.createLabel(labelName);
   }
   // Replace [SCRIPT_ID] with the actual script ID for your Google Script
-  var SCRIPT_ID = ""; // This is the script ID.
+  var SCRIPT_ID = "";
   var url = "https://script.google.com/macros/s/" + SCRIPT_ID + "/exec";
   var html = writeThreadsToHtml(getThreadsInLabel(labelName));
   var output = HtmlService.createHtmlOutput(html);
   output.setTitle("Public Threads");
+  output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   output.setSandboxMode(HtmlService.SandboxMode.IFRAME);
   Logger.log(output);
   return output;
