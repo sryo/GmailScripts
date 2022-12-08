@@ -11,7 +11,7 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 // 2. Use the Gmail API to get a list of threads in the label you want to display.
 
 function getThreadsInLabel(labelName) {
-  var threads = GmailApp.getUserLabelByName(labelName).getThreads();
+  var threads = GmailApp.getUserLabelByName(labelName).getThreads(0, 100);
   var threadArray = [];
   for (var i = 0; i < threads.length; i++) {
     var messages = threads[i].getMessages();
@@ -31,8 +31,7 @@ function getThreadsInLabel(labelName) {
   return threadArray;
 }
 
-// 3. Use Google Apps Script to create a new HTML file and write the thread information to it. 
-//    Instead of writing an html file, use HtmlService.createHtmlOutput
+// 3. Use Google Apps Script to create a new HTML file and write the thread information to it.
 
 function writeThreadsToHtml(threadArray) {
   var html = "<html><head><title>Public Threads</title></head><body>";
@@ -46,6 +45,7 @@ function writeThreadsToHtml(threadArray) {
     }
   }
   html += "</body></html>";
+  Logger.log(html);
   return html;
 }
 
@@ -57,12 +57,13 @@ function publishPublicThreads() {
     GmailApp.createLabel(labelName);
   }
   // Replace [SCRIPT_ID] with the actual script ID for your Google Script
-  var SCRIPT_ID = "";
+  var SCRIPT_ID = ""; // This is the script ID.
   var url = "https://script.google.com/macros/s/" + SCRIPT_ID + "/exec";
   var html = writeThreadsToHtml(getThreadsInLabel(labelName));
   var output = HtmlService.createHtmlOutput(html);
   output.setTitle("Public Threads");
   output.setSandboxMode(HtmlService.SandboxMode.IFRAME);
+  Logger.log(output);
   return output;
 }
 
