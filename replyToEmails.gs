@@ -1,5 +1,7 @@
 /* 
-Script that replies to emails searching for keywords
+This is a Google Apps Script that automatically replies to emails in your Gmail inbox.
+The script searches for keywords in the email threads and then replies with a pre-determined
+phrase that is associated with the keyword. 
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
@@ -38,17 +40,53 @@ function replyToEmails() {
         // Check if the keyword appears in the body of the message
         var keyword = keywords[k][0];
         var terms = keyword.split(" OR "); // Split the keyword on the " OR " divider
-        var found = false;
 
-        // Loop through the individual terms and check if any of them appear in the body
-        for (var t = 0; t < terms.length; t++) {
-          if (message.getPlainBody().indexOf(terms[t]) >= 0) {
-            found = true;
-            break;
+        var notFound = false;
+        var skipFound = false;
+        var orFound = false;
+
+        if (keyword.indexOf("NOT ") >= 0) {
+          // If the keyword contains "NOT"
+          var notTerm = keyword.match(/NOT (.*)/)[1]; // Get the term that should not appear in the body
+          if (message.getPlainBody().indexOf(notTerm) >= 0) {
+            // If the keyword appears in the body of the message, do not add the phrase to the body variable.
+            notFound = false;
+          } else {
+            // If the keyword does not appear in the body of the message, add the phrase to the body variable.
+            notFound = true;            
           }
         }
 
-        if (found) {
+        if (keyword.indexOf("SKIP") >= 0) {
+          // If the keyword contains "SKIP"
+          var skip = keyword.match(/SKIP(\d+)/)[1]; // Get the number of words that the keyword should appear within
+          if (skip) {
+            skip = skip;
+          } else {
+            skip = 0;
+          }
+
+          keyword = keyword.replace("SKIP" + skip, ""); // Remove the "SKIP<number>" from the keyword
+          var otherTerm = keyword.trim().split(" ")[1]; // Get the term that should appear within the specified number of words of the original term
+          var term = otherTerm.split(" ")[0]; // Get the first term in the keyword
+          var otherTermIndex = message.getPlainBody().indexOf(otherTerm); // Get the index of the other term in the body
+          var termIndex = message.getPlainBody().indexOf(term); // Get the index of the original term in the body
+          if (otherTermIndex >= 0 && termIndex >= 0 && Math.abs(otherTermIndex - termIndex) <= skip) { // Check if the distance between the two terms is less than or equal to the specified number of words
+            // If the keyword appears within the specified number of words of the other term, add the phrase to the body variable
+            skipFound = true;
+
+          }
+        }
+
+        // Loop through the individual terms and check if any of them appear in the body.
+        // If any of the terms appear in the body, add the phrase to the body variable.
+        for (var t = 0; t < terms.length; t++) {
+          if (message.getPlainBody().indexOf(terms[t].trim()) >= 0) {
+            orFound = true;
+          }
+        }
+
+        if (notFound || skipFound || orFound) {
           // Get the corresponding phrase from the keywords variable
           var phrase = keywords[k][1];
 
