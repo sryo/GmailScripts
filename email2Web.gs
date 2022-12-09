@@ -20,7 +20,8 @@ function getThreadsInLabel(labelName) {
       messageArray.push({
         id: messages[j].getId(),
         subject: messages[j].getSubject(),
-        body: messages[j].getBody()
+        body: messages[j].getBody(),
+        from: messages[j].getFrom()
       });
     }
     threadArray.push({
@@ -34,12 +35,12 @@ function getThreadsInLabel(labelName) {
 // 3. Use Google Apps Script to create a new HTML file and write the thread information to it.
 
 function writeThreadsToHtml(threadArray) {
-  var html = "<html><head><title>Public Threads</title></head><body>";
+  var html = "<html><head><title>Public Threads</title><style>body {font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 18px; line-height: 1.5; color: #4a4a4a; background-color: #fff; margin: 0; padding: 0;} h2 {font-size: 24px; font-weight: 500; margin: 0; padding: 0;} p {margin: 0; padding: 0;}</style></head><body>";
   for (var i = 0; i < threadArray.length; i++) {
     var thread = threadArray[i];
     for (var j = 0; j < thread.messages.length; j++) {
       var message = thread.messages[j];
-      html += "<h2>" + message.subject + "</h2>";
+      html += "<h2>" + message.subject + " <a href='mailto:" + message.from + "?subject=RE: " + message.subject + "'>🗩</a></h2>";
       html += "<p>" + message.body + "</p>";
     }
   }
@@ -63,6 +64,7 @@ function publishPublicThreads() {
   output.setTitle("Public Threads");
   output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   output.setSandboxMode(HtmlService.SandboxMode.IFRAME);
+  
   Logger.log(output);
   return output;
 }
