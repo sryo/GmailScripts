@@ -1,4 +1,4 @@
-f/* 
+/* 
 Script that schedules unimportant mails for deletion and other general cleanup routines.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
