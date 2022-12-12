@@ -99,6 +99,7 @@ function markTrashAsUnimportant() {
 }
 
 function removeEmptyLabels() {
+  //  Delete unused labels in batches
   var labels = GmailApp.getUserLabels();
   var limit = 30;
   var userProperties = PropertiesService.getUserProperties();
