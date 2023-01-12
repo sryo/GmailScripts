@@ -110,20 +110,24 @@ function removeEmptyLabels() {
   // convert offset from string to number
   offset = offset++;
 
-  var progress = "";
-  var percentage = Math.floor((offset / labels.length) * 10);
-  for (var j = 0; j < percentage; j++) {
-    progress += "🟢";
-  }
-  for (var j = percentage; j < 10; j++) {
-    if (j + 1 == (offset + limit) / labels.length * 10) {
-      progress += "🔵";
-    } else {
-      progress += "🟡";
+  if (labels.length > 0) {
+    var progress = "";
+    var percentage = Math.floor((offset + limit) / labels.length * 10);
+    for (var j = 0; j < percentage; j++) {
+      progress += "🟩";
     }
+    for (var j = percentage; j < 10; j++) {
+      if (j + 1 == Math.floor((offset + limit * 2) / labels.length * 10)) {
+        progress += "🟦";
+      } else {
+        progress += "⬜";
+      }
+    }
+    progress += " Current Offset: " + offset + "/" + labels.length + ". Next:" + (offset + limit);
+    Logger.log(progress);
+  } else {
+    Logger.log("The labels list is empty.");
   }
-  progress += " Current Offset: " + offset + "/" + labels.length + ". Next:" + (offset + limit);
-  Logger.log(progress);
 
   for (var i = offset; i < offset + limit && i < labels.length; i++) {
     var threads = labels[i].getThreads();
