@@ -1,41 +1,33 @@
 /* 
-Script that groups mails by domain, like Hey
+Script that groups mails by domain, like Hey bundles.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
 function tagEmailsByDomain() {
-  // Get all emails in the inbox
-  var threads = GmailApp.search('has:nouserlabels', 0, 25);
-
-  // Loop through each email thread
-  for (var i = 0; i < threads.length; i++) {
-    var messages = threads[i].getMessages();
-
-    // Loop through each email in the thread
-    for (var j = 0; j < messages.length; j++) {
-      var sender = messages[j].getFrom();
-
-      // Extract the domain from the sender's email address
-      var match = sender.match(/@([^@.]+)\.[^@]+$/);
-      if (match == null) {
-        // Log a message if the regular expression did not match
-        Logger.log("Could not extract domain from message in thread: " + threads[i].getPermalink());
-      } else {
-        var domain = match[1];
-
-        // Check if the label already exists
-        var label = GmailApp.getUserLabelByName(domain);
-        if (label == null) {
-          // Create the label if it doesn't exist
-          label = GmailApp.createLabel(domain);
-          listLabelHide(domain);
+  var pageToken;
+  do {
+    var threads = Gmail.Users.Threads.list('me', { q: 'has:nouserlabels', maxResults: 25, pageToken });
+    if (threads.threads && threads.threads.length) {
+      for (var i = 0; i < threads.threads.length; i++) {
+        var messages = Gmail.Users.Threads.get('me', threads.threads[i].id).messages;
+        for (var j = 0; j < messages.length; j++) {
+          var sender = messages[j].payload.headers.find(header => header.name === 'From').value;
+          var match = sender.match(/@([^@.]+)/);
+          if (match == null) {
+            console.log("Could not extract domain from message in thread: " + threads.threads[i].id);
+          } else {
+            var domain = match[1];
+            var label = Gmail.Users.Labels.list('me', { q: `name='${domain}'` }).labels.find(label => label.name === domain);
+            if (!label) {
+              label = Gmail.Users.Labels.create({ name: domain, labelListVisibility: 'labelHide' }, 'me');
+            }
+            Gmail.Users.Threads.modify({ addLabelIds: [label.id] }, 'me', threads.threads[i].id);
+            var senderName = sender.match(/^([^<]*)</)[1].trim();
+            console.log(`Added label '${domain}' to thread ${threads.threads[i].id} from '${senderName}'`);
+          }
         }
-        label.addToThread(threads[i]);
-        // Get the sender's name from the email address
-        var senderName = sender.match(/^([^<]*)</)[1].trim();
-        // Log a message indicating that the label was added to the thread
-        Logger.log("Added label '" + domain + "' to a thread from '" + senderName + "'");
       }
     }
-  }
+    pageToken = threads.nextPageToken;
+  } while (pageToken);
 }
