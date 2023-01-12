@@ -9,8 +9,8 @@ function cleanUp() {
 
   markDoneAsRead();
   markPinnedAsImportant();
-  preTrashLowPriority();
   deleteOlder();
+  preTrashLowPriority();
   markTrashAsUnimportant();
   archiveInbox();
 }
@@ -18,7 +18,7 @@ function cleanUp() {
 function archiveInbox() {
   // Search for read emails in the inbox
   var threads = GmailApp.search('label:inbox is:read older_than:1d -label:pinned -label:snoozed');
-  Logger.log('Found ' + threads.length + ' threads to move to archive.');
+  Logger.log('📦 Found ' + threads.length + ' threads to move to archive.');
 
   // Move the emails to archive
   for (var i = 0; i < threads.length; i++) {
@@ -29,7 +29,7 @@ function archiveInbox() {
 function markDoneAsRead() {
   // Search for done unread mails
   var threads = GmailApp.search('label:done is:unread -label:pinned -label:snoozed');
-  Logger.log('Found ' + threads.length + ' threads to mark as read.');
+  Logger.log('📖 Found ' + threads.length + ' threads to mark as read.');
 
   // Mark the emails as read
   for (var i = 0; i < threads.length; i++) {
@@ -42,8 +42,8 @@ var labelName = '🗑️';
 
 function preTrashLowPriority() {
   // Search for unimportant emails
-  var threads = GmailApp.search('-label:🗑️ AND label:low_priority OR label:promos OR category:updates -label:pinned -label:snoozed -label:done');
-  Logger.log('Found ' + threads.length + ' low priority threads.');
+  var threads = GmailApp.search('-label:labelName AND label:low_priority OR label:promos OR category:updates -label:pinned -label:snoozed -label:done');
+  Logger.log('🗑️ Found ' + threads.length + ' low priority threads.');
 
   // Get the label with the specified name, or create it if it does not exist
   var label = GmailApp.getUserLabelByName(labelName);
@@ -70,7 +70,7 @@ function preTrashLowPriority() {
 function deleteOlder() {
   // Search for emails that have the specified label and are more than 20 days old
   var threadsToDelete = GmailApp.search('label:' + labelName + ' older_than:20d');
-  Logger.log('Found ' + threadsToDelete.length + ' threads to delete.');
+  Logger.log('🧹 Found ' + threadsToDelete.length + ' threads to delete.');
 
   // Delete the threads
   for (var i = 0; i < threadsToDelete.length; i++) {
@@ -80,7 +80,7 @@ function deleteOlder() {
 
 function markPinnedAsImportant() {
   var threads = GmailApp.search('label:pinned OR label:snoozed is:unimportant');
-  Logger.log('Found ' + threads.length + ' important threads.');
+  Logger.log('⭐ Found ' + threads.length + ' important threads.');
 
   // Mark the emails as important
   for (var i = 0; i < threads.length; i++) {
@@ -90,7 +90,7 @@ function markPinnedAsImportant() {
 
 function markTrashAsUnimportant() {
   var threads = GmailApp.search('in:trash is:important ');
-  Logger.log('Found ' + threads.length + ' important threads in trash.');
+  Logger.log('📉 Found ' + threads.length + ' important threads in trash.');
 
   // Mark the emails as not important
   for (var i = 0; i < threads.length; i++) {
@@ -101,7 +101,7 @@ function markTrashAsUnimportant() {
 function removeEmptyLabels() {
   //  Delete unused labels in batches
   var labels = GmailApp.getUserLabels();
-  var limit = 30;
+  var limit = 50;
   var userProperties = PropertiesService.getUserProperties();
   var offset = userProperties.getProperty('offset');
   if (offset == null || offset >= labels.length) {
@@ -109,17 +109,30 @@ function removeEmptyLabels() {
   }
   // convert offset from string to number
   offset = offset++;
-  Logger.log("Current offset: " + offset + "/" + labels.length + " (total)");
+
+  var progress = "";
+  var percentage = Math.floor((offset / labels.length) * 10);
+  for (var j = 0; j < percentage; j++) {
+    progress += "🟢";
+  }
+  for (var j = percentage; j < 10; j++) {
+    if (j + 1 == (offset + limit) / labels.length * 10) {
+      progress += "🔵";
+    } else {
+      progress += "🟡";
+    }
+  }
+  progress += " Current Offset: " + offset + "/" + labels.length + ". Next:" + (offset + limit);
+  Logger.log(progress);
 
   for (var i = offset; i < offset + limit && i < labels.length; i++) {
     var threads = labels[i].getThreads();
     if (threads == "") {
       labels[i].deleteLabel();
-      Logger.log("Deleted empty label: " + labels[i].getName());
+      Logger.log("🏷️ Deleted empty label: " + labels[i].getName());
     }
   }
   userProperties.setProperty('offset', i);
-  Logger.log("Next offset: " + i);
 }
 
 function removeAllLabels() {
