@@ -4,9 +4,6 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
 function cleanUp() {
-  // Begin the clean up process
-  Logger.log('Starting clean up...');
-
   markDoneAsRead();
   markPinnedAsImportant();
   deleteOlder();
@@ -18,22 +15,26 @@ function cleanUp() {
 function archiveInbox() {
   // Search for read emails in the inbox
   var threads = GmailApp.search('label:inbox is:read older_than:1d -label:pinned -label:snoozed');
-  Logger.log('📦 Found ' + threads.length + ' threads to move to archive.');
+  if (threads.length > 0) {
+    Logger.log('📦 Found ' + threads.length + ' threads to move to archive.');
 
-  // Move the emails to archive
-  for (var i = 0; i < threads.length; i++) {
-    threads[i].moveToArchive();
+    // Move the emails to archive
+    for (var i = 0; i < threads.length; i++) {
+      threads[i].moveToArchive();
+    }
   }
 }
 
 function markDoneAsRead() {
   // Search for done unread mails
   var threads = GmailApp.search('label:done is:unread -label:pinned -label:snoozed');
-  Logger.log('📖 Found ' + threads.length + ' threads to mark as read.');
+  if (threads.length > 0) {
+    Logger.log('📖 Found ' + threads.length + ' threads to mark as read.');
 
-  // Mark the emails as read
-  for (var i = 0; i < threads.length; i++) {
-    threads[i].markRead();
+    // Mark the emails as read
+    for (var i = 0; i < threads.length; i++) {
+      threads[i].markRead();
+    }
   }
 }
 
@@ -43,58 +44,67 @@ var labelName = '🗑️';
 function preTrashLowPriority() {
   // Search for unimportant emails
   var threads = GmailApp.search('-label:labelName AND label:low_priority OR label:promos OR category:updates -label:pinned -label:snoozed -label:done');
-  Logger.log('🗑️ Found ' + threads.length + ' low priority threads.');
+  if (threads.length > 0) {
+    Logger.log('🗑️ Found ' + threads.length + ' low priority threads.');
 
-  // Get the label with the specified name, or create it if it does not exist
-  var label = GmailApp.getUserLabelByName(labelName);
-  if (label == null) {
-    label = GmailApp.createLabel(labelName);
-  }
-
-  // Remove any existing labels from the threads
-  for (var i = 0; i < threads.length; i++) {
-    var thread = threads[i];
-    var labels = thread.getLabels();
-    for (var j = 0; j < labels.length; j++) {
-      thread.removeLabel(labels[j]);
+    // Get the label with the specified name, or create it if it does not exist
+    var label = GmailApp.getUserLabelByName(labelName);
+    if (label == null) {
+      label = GmailApp.createLabel(labelName);
     }
-  }
 
-  // Add the specified label to the threads and archive
-  for (var i = 0; i < threads.length; i++) {
-    threads[i].addLabel(label);
-    threads[i].moveToArchive();
+
+    // Remove any existing labels from the threads
+    for (var i = 0; i < threads.length; i++) {
+      var thread = threads[i];
+      var labels = thread.getLabels();
+      for (var j = 0; j < labels.length; j++) {
+        thread.removeLabel(labels[j]);
+      }
+    }
+
+    // Add the specified label to the threads and archive
+    for (var i = 0; i < threads.length; i++) {
+      threads[i].addLabel(label);
+      threads[i].moveToArchive();
+    }
   }
 }
 
 function deleteOlder() {
   // Search for emails that have the specified label and are more than 20 days old
-  var threadsToDelete = GmailApp.search('label:' + labelName + ' older_than:20d');
-  Logger.log('🧹 Found ' + threadsToDelete.length + ' threads to delete.');
+  var threads = GmailApp.search('label:' + labelName + ' older_than:20d');
+  if (threads.length > 0) {
+    Logger.log('🧹 Found ' + threads.length + ' threads to delete.');
 
-  // Delete the threads
-  for (var i = 0; i < threadsToDelete.length; i++) {
-    threadsToDelete[i].moveToTrash();
+    // Delete the threads
+    for (var i = 0; i < threads.length; i++) {
+      threads[i].moveToTrash();
+    }
   }
 }
 
 function markPinnedAsImportant() {
   var threads = GmailApp.search('label:pinned OR label:snoozed is:unimportant');
-  Logger.log('⭐ Found ' + threads.length + ' important threads.');
+  if (threads.length > 0) {
+    Logger.log('⭐ Found ' + threads.length + ' important threads.');
 
-  // Mark the emails as important
-  for (var i = 0; i < threads.length; i++) {
-    threads[i].markImportant();
+    // Mark the emails as important
+    for (var i = 0; i < threads.length; i++) {
+      threads[i].markImportant();
+    }
   }
 }
 
 function markTrashAsUnimportant() {
   var threads = GmailApp.search('in:trash is:important ');
-  Logger.log('📉 Found ' + threads.length + ' important threads in trash.');
+  if (threads.length > 0) {
+    Logger.log('📉 Found ' + threads.length + ' important threads in trash.');
 
-  // Mark the emails as not important
-  for (var i = 0; i < threads.length; i++) {
-    threads[i].markUnimportant();
+    // Mark the emails as not important
+    for (var i = 0; i < threads.length; i++) {
+      threads[i].markUnimportant();
+    }
   }
 }
 
