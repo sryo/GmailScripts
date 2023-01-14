@@ -5,8 +5,15 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 
 function tagEmailsByDomain() {
   var pageToken;
+  var userProperties = PropertiesService.getUserProperties();
+  var lastLabelAddedTime = userProperties.getProperty('lastLabelAddedTime');
+  if (lastLabelAddedTime == null) {
+    lastLabelAddedTime = new Date(); // initialize with current time
+    userProperties.setProperty('lastLabelAddedTime', lastLabelAddedTime);
+  }
   do {
     var threads = Gmail.Users.Threads.list('me', { q: 'has:nouserlabels', maxResults: 25, pageToken });
+    var labelsAddedInCurrentIteration = false; // keep track of whether labels were added in current iteration
     if (threads.threads && threads.threads.length) {
       for (var i = 0; i < threads.threads.length; i++) {
         var messages = Gmail.Users.Threads.get('me', threads.threads[i].id).messages;
@@ -23,10 +30,16 @@ function tagEmailsByDomain() {
             }
             Gmail.Users.Threads.modify({ addLabelIds: [label.id] }, 'me', threads.threads[i].id);
             var senderName = sender.match(/^([^<]*)</)[1].trim();
-            console.log(`Added label '${domain}' to thread ${threads.threads[i].id} from '${senderName}'`);
+            lastLabelAddedTime = new Date(); // update last label added time
+            userProperties.setProperty('lastLabelAddedTime', lastLabelAddedTime);
+            labelsAddedInCurrentIteration = true;
+            Logger.log(`Added label '${domain}' to thread ${threads.threads[i].id} from '${senderName}'`);
           }
         }
       }
+    }
+    if (!labelsAddedInCurrentIteration) {
+      console.log("No labels added since " + userProperties.getProperty('lastLabelAddedTime'));
     }
     pageToken = threads.nextPageToken;
   } while (pageToken);
