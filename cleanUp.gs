@@ -3,6 +3,14 @@ Script that schedules unimportant mails for deletion and other general cleanup r
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
+var userProperties = PropertiesService.getUserProperties();
+var lastCleanedTime = userProperties.getProperty('lastCleanedTime');
+if (lastCleanedTime == null) {
+  lastCleanedTime = new Date(); // initialize with current time
+  userProperties.setProperty('lastCleanedTime', lastCleanedTime);
+}
+var cleanedInCurrentIteration = false; // keep track of whether labels were added in current iteration
+
 function cleanUp() {
   markDoneAsRead();
   markPinnedAsImportant();
@@ -10,6 +18,7 @@ function cleanUp() {
   preTrashLowPriority();
   markTrashAsUnimportant();
   archiveInbox();
+  logCleanDate();
 }
 
 function archiveInbox() {
@@ -17,6 +26,8 @@ function archiveInbox() {
   var threads = GmailApp.search('label:inbox is:read older_than:1d -label:pinned -label:snoozed');
   if (threads.length > 0) {
     Logger.log('📦 Found ' + threads.length + ' threads to move to archive.');
+    cleanedInCurrentIteration = true;
+    lastCleanedTime = new Date(); // update last label added time
 
     // Move the emails to archive
     for (var i = 0; i < threads.length; i++) {
@@ -30,6 +41,8 @@ function markDoneAsRead() {
   var threads = GmailApp.search('label:done is:unread -label:pinned -label:snoozed');
   if (threads.length > 0) {
     Logger.log('📖 Found ' + threads.length + ' threads to mark as read.');
+    cleanedInCurrentIteration = true;
+    lastCleanedTime = new Date(); // update last label added time
 
     // Mark the emails as read
     for (var i = 0; i < threads.length; i++) {
@@ -46,13 +59,14 @@ function preTrashLowPriority() {
   var threads = GmailApp.search('-label:labelName AND label:low_priority OR label:promos OR category:updates -label:pinned -label:snoozed -label:done');
   if (threads.length > 0) {
     Logger.log('🗑️ Found ' + threads.length + ' low priority threads.');
+    cleanedInCurrentIteration = true;
+    lastCleanedTime = new Date(); // update last label added time
 
     // Get the label with the specified name, or create it if it does not exist
     var label = GmailApp.getUserLabelByName(labelName);
     if (label == null) {
       label = GmailApp.createLabel(labelName);
     }
-
 
     // Remove any existing labels from the threads
     for (var i = 0; i < threads.length; i++) {
@@ -76,6 +90,8 @@ function deleteOlder() {
   var threads = GmailApp.search('label:' + labelName + ' older_than:20d');
   if (threads.length > 0) {
     Logger.log('🧹 Found ' + threads.length + ' threads to delete.');
+    cleanedInCurrentIteration = true;
+    lastCleanedTime = new Date(); // update last label added time
 
     // Delete the threads
     for (var i = 0; i < threads.length; i++) {
@@ -88,6 +104,8 @@ function markPinnedAsImportant() {
   var threads = GmailApp.search('label:pinned OR label:snoozed is:unimportant');
   if (threads.length > 0) {
     Logger.log('⭐ Found ' + threads.length + ' important threads.');
+    cleanedInCurrentIteration = true;
+    lastCleanedTime = new Date(); // update last label added time
 
     // Mark the emails as important
     for (var i = 0; i < threads.length; i++) {
@@ -100,6 +118,8 @@ function markTrashAsUnimportant() {
   var threads = GmailApp.search('in:trash is:important ');
   if (threads.length > 0) {
     Logger.log('📉 Found ' + threads.length + ' important threads in trash.');
+    cleanedInCurrentIteration = true;
+    lastCleanedTime = new Date(); // update last label added time
 
     // Mark the emails as not important
     for (var i = 0; i < threads.length; i++) {
@@ -144,9 +164,20 @@ function removeEmptyLabels() {
     if (threads == "") {
       labels[i].deleteLabel();
       Logger.log("🏷️ Deleted empty label: " + labels[i].getName());
+      cleanedInCurrentIteration = true;
+      lastCleanedTime = new Date(); // update last label added time
     }
   }
   userProperties.setProperty('offset', i);
+}
+
+function logCleanDate() {
+  if (cleanedInCurrentIteration) {
+    userProperties.setProperty('lastCleanedTime', lastCleanedTime);
+  }
+  else {
+    console.log("✨ All clean since " + userProperties.getProperty('lastCleanedTime'));
+  }
 }
 
 function removeAllLabels() {
