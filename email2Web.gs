@@ -56,16 +56,13 @@ function publishPublicThreads() {
   if (!GmailApp.getUserLabelByName(labelName)) {
     GmailApp.createLabel(labelName);
   }
-  // Replace [SCRIPT_ID] with the actual script ID for your Google Script
-  var SCRIPT_ID = "";
-  var url = "https://script.google.com/macros/s/" + SCRIPT_ID + "/exec";
   var html = writeThreadsToHtml(getThreadsInLabel(labelName));
   var output = HtmlService.createHtmlOutput(html);
   output.setTitle("Public Threads");
   output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
   output.setSandboxMode(HtmlService.SandboxMode.IFRAME);
   output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  
+
   return output;
 }
 
