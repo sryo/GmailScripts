@@ -1,7 +1,17 @@
 # GmailScripts
+## cleanUp.gs
 Google Apps Script that help you declutter your inbox.
 
-## FAQ
+The Gmail Cleanup script schedules unimportant mails for deletion and performs general cleanup routines. It marks done emails as read, deletes older mails, archives inbox, and pre-trashes low priority emails. The script also ensures that important mails are marked as such, giving you complete control over your inbox. By automating the tedious task of cleaning up your inbox, you can focus on more important tasks and be more productive.
+
+## email2Web.gs
+Share some Gmail threads with the world in an easily accessible URL. By using this script, users can make sure that their important threads are always available and accessible to others, no matter where they are.
+
+## tagEmailsByDomain.gs and labelBySender.gs
+
+Having the ability to group emails from the same sender or domain can be very helpful in organizing your inbox and keeping it clutter-free. You can easily keep track of all emails from a specific company or team. This script will help you prioritize your emails and quickly identify which ones are important and need your attention.
+
+# FAQ
 
 **Q:** What are these scripts for?
 
