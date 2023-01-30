@@ -1,6 +1,7 @@
 # GmailScripts
-## cleanUp.gs
 Google Apps Script that help you declutter your inbox.
+
+## cleanUp.gs
 
 The Gmail Cleanup script schedules unimportant mails for deletion and performs general cleanup routines. It marks done emails as read, deletes older mails, archives inbox, and pre-trashes low priority emails. The script also ensures that important mails are marked as such, giving you complete control over your inbox. By automating the tedious task of cleaning up your inbox, you can focus on more important tasks and be more productive.
 
