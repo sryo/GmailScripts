@@ -14,6 +14,3 @@ Google Apps Script that help you declutter your inbox.
 **Q:** Are these scripts free to use?
 
 **A:** Yes, if you find these scripts useful and want to support their development, donations are accepted and encouraged. Any contributions you make will go towards supporting the continued development of these scripts and making them even better.
-
-[Donate](https://mpago.la/26yEuev)
-
