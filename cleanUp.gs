@@ -56,7 +56,7 @@ var labelName = '🗑️';
 
 function preTrashLowPriority() {
   // Search for unimportant emails
-  var threads = GmailApp.search('-label:labelName AND label:low_priority OR label:promos OR category:updates -label:pinned -label:snoozed -label:done');
+  var threads = GmailApp.search('-label:labelName AND label:low_priority OR label:promos OR category:updates -is:important -label:pinned -label:snoozed -label:done');
   if (threads.length > 0) {
     Logger.log('🗑️ Found ' + threads.length + ' low priority threads.');
     cleanedInCurrentIteration = true;
