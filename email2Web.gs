@@ -1,69 +1,141 @@
-/* 
-This is a Google Apps Script creates a file in Google Drive containing all the
-threads in the 🌎 label and shares it with the world.
-Author: Mateo Yadarola (teodalton@gmail.com)
-*/
-
-
-// 1. Enable the Gmail API in your Google Developers Console.
-//    https://console.developers.google.com/apis/library/gmail.googleapis.com
-
-// 2. Use the Gmail API to get a list of threads in the label you want to display.
+const LABEL_NAME = '🌎';
+const MAX_THREADS = 100;
 
 function getThreadsInLabel(labelName) {
-  var threads = GmailApp.getUserLabelByName(labelName).getThreads(0, 100);
-  var threadArray = [];
-  for (var i = 0; i < threads.length; i++) {
-    var messages = threads[i].getMessages();
-    var messageArray = [];
-    for (var j = 0; j < messages.length; j++) {
-      messageArray.push({
-        id: messages[j].getId(),
-        subject: messages[j].getSubject(),
-        body: messages[j].getBody(),
-        from: messages[j].getFrom()
-      });
-    }
-    threadArray.push({
-      id: threads[i].getId(),
-      messages: messageArray
-    });
+  const label = GmailApp.getUserLabelByName(labelName);
+  if (!label) {
+    console.log(`Label "${labelName}" not found.`);
+    return [];
   }
-  return threadArray;
+  
+  const threads = label.getThreads(0, MAX_THREADS);
+  return threads.map(thread => ({
+    id: thread.getId(),
+    subject: thread.getFirstMessageSubject(),
+    lastMessageDate: thread.getLastMessageDate().toISOString(),
+    messages: thread.getMessages().map(message => ({
+      id: message.getId(),
+      subject: message.getSubject(),
+      body: message.getBody(),
+      from: message.getFrom(),
+      date: message.getDate().toISOString()
+    }))
+  }));
 }
-
-// 3. Use Google Apps Script to create a new HTML file and write the thread information to it.
 
 function writeThreadsToHtml(threadArray) {
-  var html = "<html><head><title>Public Threads</title><style>body {margin: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;} h1 {font-size: 36px; font-weight: bold;} p {font-size: 18px; line-height: 1.5;} a {color: inherit;} .mail-subject:hover a {opacity: 1;} .mail-subject a {text-decoration: none; opacity: 0; transition: opacity 0.25s;}</style></head><body>";
-  for (var i = 0; i < threadArray.length; i++) {
-    var thread = threadArray[i];
-    for (var j = 0; j < thread.messages.length; j++) {
-      var message = thread.messages[j];
-      html += "<h2 class='mail-subject'>" + message.subject + " <a href='mailto:" + message.from + "?subject=RE: " + message.subject + "'>🗩</a></h2>";
-      html += "<p>" + message.body + "</p>";
-    }
-  }
-  html += "</body></html>";
-  Logger.log("Showing " + threadArray.length + " threads with " + threadArray.length + " messages");
-  return html;
+  const messageCount = threadArray.reduce((count, thread) => count + thread.messages.length, 0);
+  console.log(`Showing ${threadArray.length} threads with ${messageCount} messages`);
+
+  const threadHtml = threadArray.map(thread => `
+    <div class="thread">
+      <h2 class='thread-subject'>${thread.subject}</h2>
+      ${thread.messages.map(message => `
+        <div class="message">
+          <div class="message-header">
+            <span class="from">${message.from}</span>
+            <span class="date">${new Date(message.date).toLocaleString()}</span>
+          </div>
+          <div class="message-body">${message.body}</div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Public Threads</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          h1 { color: #2c3e50; }
+          .thread {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+          }
+          .thread-subject {
+            color: #34495e;
+            margin-top: 0;
+          }
+          .message {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            margin-top: 10px;
+          }
+          .message-header {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+          }
+          .message-body {
+            margin-top: 10px;
+          }
+          .message-body img {
+            max-width: 100%;
+            height: auto;
+          }
+          #sortSelect {
+            margin-bottom: 20px;
+          }
+        </style>
+        <script>
+          function sortThreads(sortBy) {
+            const threadContainer = document.getElementById('threadContainer');
+            const threads = Array.from(threadContainer.children);
+            
+            threads.sort((a, b) => {
+              const aValue = a.getAttribute('data-' + sortBy);
+              const bValue = b.getAttribute('data-' + sortBy);
+              if (sortBy === 'date') {
+                return new Date(bValue) - new Date(aValue);
+              } else {
+                return aValue.localeCompare(bValue);
+              }
+            });
+            
+            threads.forEach(thread => threadContainer.appendChild(thread));
+          }
+        </script>
+      </head>
+      <body>
+        <h1>Public Threads</h1>
+        <select id="sortSelect" onchange="sortThreads(this.value)">
+          <option value="date">Sort by Date</option>
+          <option value="subject">Sort by Subject</option>
+        </select>
+        <div id="threadContainer">
+          ${threadHtml}
+        </div>
+      </body>
+    </html>
+  `;
 }
 
-// 4. Publish the HTML file as a web app and make it publicly accessible.
-
 function publishPublicThreads() {
-  var labelName = '🌎';
-  if (!GmailApp.getUserLabelByName(labelName)) {
-    GmailApp.createLabel(labelName);
+  if (!GmailApp.getUserLabelByName(LABEL_NAME)) {
+    GmailApp.createLabel(LABEL_NAME);
   }
-  var html = writeThreadsToHtml(getThreadsInLabel(labelName));
-  var output = HtmlService.createHtmlOutput(html);
-  output.setTitle("Public Threads");
-  output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  output.setSandboxMode(HtmlService.SandboxMode.IFRAME);
-  output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
-  return output;
+  const threads = getThreadsInLabel(LABEL_NAME);
+  const html = writeThreadsToHtml(threads);
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle("Public Threads")
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function doGet() {
