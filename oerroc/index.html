@@ -1,0 +1,2068 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                font-size: 13px;
+                background: #fff;
+                color: #333;
+            }
+
+            .btn {
+                padding: 6px 12px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                cursor: pointer;
+                font-size: 13px;
+                background: #f8f8f8;
+                color: #333;
+            }
+
+            .btn:hover {
+                background: #eee;
+            }
+
+            .btn-secondary {
+                background: #fff;
+                color: #666;
+            }
+
+            .btn-danger {
+                color: #c00;
+            }
+
+            .btn-danger:hover {
+                background: #fee;
+            }
+
+            .card-row {
+                display: flex;
+                gap: 12px;
+                overflow-x: auto;
+                padding: 12px;
+                align-items: flex-start;
+                min-height: 100vh;
+                background: #f5f5f5;
+            }
+
+            .add-card {
+                min-width: 100px;
+                height: 80px;
+                flex-shrink: 0;
+                background: transparent;
+                border: 1px dashed #ccc;
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                color: #999;
+            }
+
+            .add-card:hover {
+                border-color: #666;
+                color: #666;
+            }
+
+            .add-card svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            .card {
+                min-width: var(--card-width, 320px);
+                max-width: var(--card-width, 320px);
+                flex-shrink: 0;
+                background: #fff;
+                border-radius: 4px;
+                border: 1px solid #ddd;
+                overflow: hidden;
+            }
+
+            .card.dragging {
+                opacity: 0.5;
+            }
+
+            .card.drag-over {
+                border-left: 2px solid #333;
+            }
+
+            .card.collapsed {
+                min-width: 36px;
+                max-width: 36px;
+                cursor: pointer;
+            }
+
+            .card-header {
+                display: flex;
+                align-items: center;
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+                gap: 6px;
+            }
+
+            .collapse-btn {
+                width: 24px;
+                height: 24px;
+                border: none;
+                background: none;
+                cursor: pointer;
+                border-radius: 3px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                color: #999;
+            }
+
+            .collapse-btn:hover {
+                background: #f0f0f0;
+            }
+
+            .collapse-btn svg {
+                transition: transform 150ms;
+            }
+
+            .card.collapsed .collapse-btn svg {
+                transform: rotate(-90deg);
+            }
+
+            .card-title {
+                flex-grow: 1;
+                font-weight: 500;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                cursor: default;
+            }
+
+            .card-title-input {
+                display: none;
+                flex-grow: 1;
+                font-size: 13px;
+                padding: 4px 6px;
+                border: 1px solid #999;
+                border-radius: 3px;
+                outline: none;
+                min-width: 0;
+            }
+
+            .card.editing .card-title {
+                display: none;
+            }
+            .card.editing .card-title-input {
+                display: block;
+            }
+            .card.editing .card-actions {
+                display: none;
+            }
+
+            /* Card form mode */
+            .card-form {
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .card-form-group {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+            }
+
+            .card-form-group label {
+                font-size: 11px;
+                color: #666;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .card-form-group input[type="text"] {
+                padding: 6px 8px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                font-size: 13px;
+            }
+
+            .card-form-group input[type="text"]:focus {
+                outline: none;
+                border-color: #666;
+            }
+
+            .card-form-filters {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-top: 4px;
+            }
+
+            .card-form-groupby {
+                display: flex;
+                gap: 12px;
+            }
+
+            .groupby-option {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+
+            .groupby-option input {
+                margin: 0;
+            }
+
+            .card-form-actions {
+                display: flex;
+                gap: 6px;
+                justify-content: flex-end;
+                padding-top: 8px;
+                border-top: 1px solid #eee;
+            }
+
+            .card.form-mode .card-header {
+                display: none;
+            }
+            .card.form-mode .card-body {
+                display: none;
+            }
+            .card.form-mode .card-form {
+                display: flex;
+            }
+            .card .card-form {
+                display: none;
+            }
+
+            .card-form-preview {
+                max-height: 250px;
+                overflow-y: auto;
+                border-top: 1px solid #eee;
+                margin: 0 -10px -10px -10px;
+            }
+
+            .card-form-preview .loading,
+            .card-form-preview .empty {
+                padding: 12px;
+                text-align: center;
+                color: #999;
+                font-size: 12px;
+            }
+
+            .card-form-preview .thread {
+                cursor: default;
+                padding: 6px 10px;
+            }
+
+            .card-form-preview .thread:hover {
+                background: transparent;
+            }
+
+            .card-form-preview .thread-actions {
+                display: none !important;
+            }
+
+            .card-form-preview .thread-snippet {
+                font-size: 11px;
+            }
+
+            .card.collapsed .card-title {
+                writing-mode: vertical-rl;
+                transform: rotate(180deg);
+                white-space: nowrap;
+                overflow: visible;
+                padding: 8px 0;
+                font-size: 12px;
+            }
+
+            .card.collapsed .card-header {
+                flex-direction: column;
+                padding: 8px 6px;
+                border-bottom: none;
+                height: 100%;
+                min-height: 150px;
+            }
+
+            .card.collapsed .card-actions,
+            .card.collapsed .card-body {
+                display: none;
+            }
+
+            .card-actions {
+                display: flex;
+                gap: 2px;
+            }
+
+            .icon-btn {
+                width: 26px;
+                height: 26px;
+                border: none;
+                background: none;
+                cursor: pointer;
+                border-radius: 3px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #999;
+            }
+
+            .icon-btn:hover {
+                background: #f0f0f0;
+                color: #666;
+            }
+
+            .icon-btn.spinning svg {
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                from {
+                    transform: rotate(0deg);
+                }
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .card-body {
+                max-height: calc(100vh - 70px);
+                overflow-y: auto;
+            }
+
+            .loading {
+                padding: 20px;
+                text-align: center;
+                color: #999;
+                font-size: 12px;
+            }
+
+            .date-group {
+                border-bottom: 1px solid #eee;
+            }
+
+            .date-group:last-child {
+                border-bottom: none;
+            }
+
+            .date-header {
+                padding: 6px 10px;
+                font-size: 10px;
+                font-weight: 500;
+                color: #999;
+                background: #fafafa;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .thread {
+                padding: 8px 10px;
+                border-bottom: 1px solid #eee;
+                cursor: pointer;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                position: relative;
+                transition:
+                    opacity 150ms,
+                    height 150ms,
+                    padding 150ms;
+            }
+
+            .thread:hover {
+                background: #f8f8f8;
+            }
+            .thread:last-child {
+                border-bottom: none;
+            }
+
+            .thread-actions {
+                position: absolute;
+                right: 6px;
+                top: 50%;
+                transform: translateY(-50%);
+                display: none;
+                gap: 1px;
+                background: #fff;
+                border: 1px solid #ddd;
+                border-radius: 3px;
+                padding: 2px;
+            }
+
+            .thread:hover .thread-actions {
+                display: flex;
+            }
+            .thread:hover .thread-time {
+                display: none;
+            }
+
+            .thread-action {
+                width: 24px;
+                height: 24px;
+                border: none;
+                background: none;
+                cursor: pointer;
+                border-radius: 2px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #999;
+            }
+
+            .thread-action:hover {
+                background: #f0f0f0;
+                color: #666;
+            }
+            .thread-action.archive:hover {
+                color: #090;
+            }
+            .thread-action.trash:hover {
+                color: #c00;
+            }
+            .thread-action.star:hover {
+                color: #c90;
+            }
+            .thread-action.mark-read:hover {
+                color: #06c;
+            }
+            .thread-action.mark-important:hover {
+                color: #c90;
+            }
+            .thread-action.snooze:hover {
+                color: #c60;
+            }
+
+            .thread.unread .thread-subject {
+                font-weight: 600;
+            }
+
+            .thread-row {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .thread-subject {
+                flex-grow: 1;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .thread-time {
+                font-size: 11px;
+                color: #999;
+                flex-shrink: 0;
+            }
+
+            .thread-snippet {
+                font-size: 12px;
+                color: #888;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: var(--snippet-lines, 2);
+            }
+
+            .thread-participants {
+                font-size: 11px;
+                color: #aaa;
+            }
+
+            .unread-badge {
+                width: 6px;
+                height: 6px;
+                background: #666;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+
+            .load-more {
+                padding: 8px;
+                text-align: center;
+            }
+
+            .load-more button {
+                color: #666;
+                background: none;
+                border: none;
+                cursor: pointer;
+                font-size: 12px;
+            }
+
+            .load-more button:hover {
+                text-decoration: underline;
+            }
+
+            .empty {
+                padding: 16px;
+                text-align: center;
+                color: #999;
+                font-size: 12px;
+            }
+
+            /* Filter chips */
+            .filter-chip {
+                padding: 3px 8px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                background: #fff;
+                font-size: 11px;
+                color: #666;
+                cursor: pointer;
+            }
+
+            .filter-chip:hover {
+                background: #f0f0f0;
+                border-color: #999;
+            }
+
+            /* Settings */
+            .settings-btn {
+                position: fixed;
+                bottom: 16px;
+                left: 16px;
+                width: 32px;
+                height: 32px;
+                background: #fff;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                color: #999;
+                z-index: 50;
+            }
+
+            .settings-btn:hover {
+                background: #f0f0f0;
+                color: #666;
+                border-color: #999;
+            }
+
+            .settings-sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 280px;
+                background: #fff;
+                border-right: 1px solid #ddd;
+                z-index: 100;
+                transform: translateX(-100%);
+                transition: transform 150ms ease;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .settings-sidebar.open {
+                transform: translateX(0);
+            }
+
+            .settings-header {
+                padding: 12px 16px;
+                border-bottom: 1px solid #eee;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .settings-header h3 {
+                margin: 0;
+                font-size: 14px;
+                font-weight: 500;
+            }
+
+            .settings-close {
+                width: 28px;
+                height: 28px;
+                border: none;
+                background: none;
+                cursor: pointer;
+                border-radius: 3px;
+                color: #999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .settings-close:hover {
+                background: #f0f0f0;
+                color: #666;
+            }
+
+            .settings-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+            }
+
+            .settings-section {
+                margin-bottom: 20px;
+            }
+
+            .settings-section-title {
+                font-size: 11px;
+                font-weight: 500;
+                color: #999;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 10px;
+            }
+
+            .settings-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+
+            .settings-row label {
+                font-size: 13px;
+                color: #333;
+            }
+
+            .settings-row span {
+                font-size: 13px;
+                color: #666;
+            }
+
+            .settings-range {
+                width: 100%;
+                margin-bottom: 12px;
+                cursor: pointer;
+            }
+
+            .settings-checkbox {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 8px;
+                font-size: 13px;
+                cursor: pointer;
+            }
+
+            .settings-checkbox input {
+                margin: 0;
+            }
+
+            .settings-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.3);
+                z-index: 99;
+                opacity: 0;
+                visibility: hidden;
+                transition:
+                    opacity 150ms,
+                    visibility 150ms;
+            }
+
+            .settings-overlay.open {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .compose-wrapper {
+                position: fixed;
+                bottom: 16px;
+                right: 16px;
+                z-index: 50;
+            }
+
+            .compose-btn {
+                width: 40px;
+                height: 40px;
+                border-radius: 3px;
+                border: 1px solid #ccc;
+                background: #fff;
+                color: #666;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .compose-btn:hover {
+                background: #f0f0f0;
+                color: #333;
+                border-color: #999;
+            }
+
+            .compose-menu {
+                position: absolute;
+                bottom: 48px;
+                right: 0;
+                background: #fff;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                min-width: 180px;
+                max-width: 240px;
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(4px);
+                transition:
+                    opacity 100ms,
+                    transform 100ms,
+                    visibility 100ms;
+            }
+
+            .compose-wrapper:hover .compose-menu {
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
+
+            .compose-menu-loading {
+                padding: 10px 12px;
+                color: #999;
+                font-size: 12px;
+            }
+
+            .compose-menu-item {
+                padding: 8px 12px;
+                cursor: pointer;
+                display: flex;
+                flex-direction: column;
+                gap: 1px;
+                border-bottom: 1px solid #eee;
+            }
+
+            .compose-menu-item:last-child {
+                border-bottom: none;
+            }
+
+            .compose-menu-item:hover {
+                background: #f8f8f8;
+            }
+
+            .compose-menu-name {
+                font-size: 13px;
+                color: #333;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .compose-menu-email {
+                font-size: 11px;
+                color: #999;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="cardRow" class="card-row"></div>
+
+        <button
+            class="settings-btn"
+            onclick="toggleSettings()"
+            title="Settings"
+        >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                    d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
+                />
+            </svg>
+        </button>
+
+        <div
+            class="settings-overlay"
+            id="settingsOverlay"
+            onclick="toggleSettings()"
+        ></div>
+        <div class="settings-sidebar" id="settingsSidebar">
+            <div class="settings-header">
+                <h3>Settings</h3>
+                <button class="settings-close" onclick="toggleSettings()">
+                    <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                    >
+                        <path
+                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                        />
+                    </svg>
+                </button>
+            </div>
+            <div class="settings-body">
+                <div class="settings-section">
+                    <div class="settings-section-title">Layout</div>
+                    <div class="settings-row">
+                        <label>Card width</label>
+                        <span id="cardWidthValue">320px</span>
+                    </div>
+                    <input
+                        type="range"
+                        id="settingCardWidth"
+                        min="280"
+                        max="600"
+                        step="10"
+                        value="320"
+                        class="settings-range"
+                    />
+                    <div class="settings-row">
+                        <label>Snippet lines</label>
+                        <span id="snippetLinesValue">2</span>
+                    </div>
+                    <input
+                        type="range"
+                        id="settingSnippetLines"
+                        min="1"
+                        max="5"
+                        step="1"
+                        value="2"
+                        class="settings-range"
+                    />
+                </div>
+                <div class="settings-section">
+                    <div class="settings-section-title">Thread Actions</div>
+                    <label class="settings-checkbox">
+                        <input type="checkbox" id="actionArchive" checked />
+                        Archive
+                    </label>
+                    <label class="settings-checkbox">
+                        <input type="checkbox" id="actionStar" checked /> Star
+                    </label>
+                    <label class="settings-checkbox">
+                        <input type="checkbox" id="actionTrash" checked />
+                        Delete
+                    </label>
+                    <label class="settings-checkbox">
+                        <input type="checkbox" id="actionMarkRead" /> Mark as
+                        read/unread
+                    </label>
+                    <label class="settings-checkbox">
+                        <input type="checkbox" id="actionMarkImportant" /> Mark
+                        as important
+                    </label>
+                    <label class="settings-checkbox">
+                        <input type="checkbox" id="actionSnooze" /> Snooze
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="compose-wrapper">
+            <div class="compose-menu" id="composeMenu">
+                <div class="compose-menu-loading">Loading...</div>
+            </div>
+            <button class="compose-btn" onclick="openCompose()" title="Compose">
+                <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                >
+                    <path
+                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                    />
+                </svg>
+            </button>
+        </div>
+
+        <script>
+            var cards = JSON.parse("<?= cards ?>");
+            var cardData = {}; // Store fetched threads per card
+
+            var AUTO_REFRESH_INTERVAL = 60000; // 60 seconds
+
+            // Settings
+            var settings = {
+                cardWidth: 320,
+                snippetLines: 2,
+                actions: {
+                    archive: true,
+                    star: true,
+                    trash: true,
+                    markRead: false,
+                    markImportant: false,
+                    snooze: false,
+                },
+            };
+
+            function loadSettings() {
+                var saved = localStorage.getItem("gmailCardsSettings");
+                if (saved) {
+                    try {
+                        var parsed = JSON.parse(saved);
+                        settings = Object.assign(settings, parsed);
+                        // Ensure actions object exists
+                        settings.actions = Object.assign(
+                            {
+                                archive: true,
+                                star: true,
+                                trash: true,
+                                markRead: false,
+                                markImportant: false,
+                                snooze: false,
+                            },
+                            settings.actions || {},
+                        );
+                    } catch (e) {}
+                } else {
+                    // Migrate old cardWidth setting if exists
+                    var oldWidth = localStorage.getItem("cardWidth");
+                    if (oldWidth) {
+                        settings.cardWidth = parseInt(oldWidth) || 320;
+                        localStorage.removeItem("cardWidth");
+                    }
+                }
+                applySettings();
+            }
+
+            function saveSettings() {
+                localStorage.setItem(
+                    "gmailCardsSettings",
+                    JSON.stringify(settings),
+                );
+                applySettings();
+            }
+
+            function applySettings() {
+                // Card width
+                document.documentElement.style.setProperty(
+                    "--card-width",
+                    settings.cardWidth + "px",
+                );
+                document.getElementById("settingCardWidth").value =
+                    settings.cardWidth;
+                document.getElementById("cardWidthValue").textContent =
+                    settings.cardWidth + "px";
+
+                // Snippet lines
+                document.documentElement.style.setProperty(
+                    "--snippet-lines",
+                    settings.snippetLines,
+                );
+                document.getElementById("settingSnippetLines").value =
+                    settings.snippetLines;
+                document.getElementById("snippetLinesValue").textContent =
+                    settings.snippetLines;
+
+                // Actions checkboxes
+                document.getElementById("actionArchive").checked =
+                    settings.actions.archive;
+                document.getElementById("actionStar").checked =
+                    settings.actions.star;
+                document.getElementById("actionTrash").checked =
+                    settings.actions.trash;
+                document.getElementById("actionMarkRead").checked =
+                    settings.actions.markRead;
+                document.getElementById("actionMarkImportant").checked =
+                    settings.actions.markImportant;
+                document.getElementById("actionSnooze").checked =
+                    settings.actions.snooze;
+
+                // Re-render threads to update actions
+                cards.forEach(function (card) {
+                    if (!card.collapsed && cardData[card.id]) {
+                        renderThreads(card.id);
+                    }
+                });
+            }
+
+            function toggleSettings() {
+                var sidebar = document.getElementById("settingsSidebar");
+                var overlay = document.getElementById("settingsOverlay");
+                var isOpen = sidebar.classList.contains("open");
+
+                sidebar.classList.toggle("open", !isOpen);
+                overlay.classList.toggle("open", !isOpen);
+            }
+
+            function initSettingsListeners() {
+                // Card width
+                document
+                    .getElementById("settingCardWidth")
+                    .addEventListener("input", function () {
+                        settings.cardWidth = parseInt(this.value) || 320;
+                        document.getElementById("cardWidthValue").textContent =
+                            settings.cardWidth + "px";
+                        document.documentElement.style.setProperty(
+                            "--card-width",
+                            settings.cardWidth + "px",
+                        );
+                    });
+                document
+                    .getElementById("settingCardWidth")
+                    .addEventListener("change", function () {
+                        saveSettings();
+                    });
+
+                // Snippet lines
+                document
+                    .getElementById("settingSnippetLines")
+                    .addEventListener("input", function () {
+                        settings.snippetLines = parseInt(this.value) || 2;
+                        document.getElementById(
+                            "snippetLinesValue",
+                        ).textContent = settings.snippetLines;
+                    });
+                document
+                    .getElementById("settingSnippetLines")
+                    .addEventListener("change", function () {
+                        saveSettings();
+                    });
+
+                // Action toggles
+                [
+                    "Archive",
+                    "Star",
+                    "Trash",
+                    "MarkRead",
+                    "MarkImportant",
+                    "Snooze",
+                ].forEach(function (action) {
+                    var el = document.getElementById("action" + action);
+                    var key = action.charAt(0).toLowerCase() + action.slice(1);
+                    el.addEventListener("change", function () {
+                        settings.actions[key] = this.checked;
+                        saveSettings();
+                    });
+                });
+            }
+
+            function init() {
+                loadSettings();
+                initSettingsListeners();
+                renderCards();
+
+                // Load threads for expanded cards
+                cards.forEach(function (card) {
+                    if (!card.collapsed) {
+                        loadThreads(card.id);
+                    }
+                });
+
+                // Auto-refresh expanded cards
+                setInterval(function () {
+                    cards.forEach(function (card) {
+                        if (!card.collapsed) {
+                            refreshCard(card.id);
+                        }
+                    });
+                }, AUTO_REFRESH_INTERVAL);
+            }
+
+            function renderCards() {
+                var container = document.getElementById("cardRow");
+                container.innerHTML = "";
+
+                cards.sort(function (a, b) {
+                    return a.order - b.order;
+                });
+
+                cards.forEach(function (card) {
+                    var el = createCardElement(card);
+                    container.appendChild(el);
+                });
+
+                // Add card button at the end
+                var addBtn = document.createElement("div");
+                addBtn.className = "add-card";
+                addBtn.onclick = showAddModal;
+                addBtn.innerHTML =
+                    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>';
+                container.appendChild(addBtn);
+            }
+
+            function createCardElement(card) {
+                var div = document.createElement("div");
+                div.className = "card" + (card.collapsed ? " collapsed" : "");
+                div.dataset.id = card.id;
+                div.draggable = true;
+
+                // Drag events
+                div.addEventListener("dragstart", function (e) {
+                    div.classList.add("dragging");
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", card.id);
+                });
+                div.addEventListener("dragend", function () {
+                    div.classList.remove("dragging");
+                    document
+                        .querySelectorAll(".card.drag-over")
+                        .forEach(function (c) {
+                            c.classList.remove("drag-over");
+                        });
+                });
+                div.addEventListener("dragover", function (e) {
+                    e.preventDefault();
+                    var dragging = document.querySelector(".card.dragging");
+                    if (dragging && dragging !== div) {
+                        div.classList.add("drag-over");
+                    }
+                });
+                div.addEventListener("dragleave", function () {
+                    div.classList.remove("drag-over");
+                });
+                div.addEventListener("drop", function (e) {
+                    e.preventDefault();
+                    div.classList.remove("drag-over");
+                    var draggedId = e.dataTransfer.getData("text/plain");
+                    if (draggedId && draggedId !== card.id) {
+                        reorderCard(draggedId, card.id);
+                    }
+                });
+
+                div.innerHTML =
+                    '<div class="card-header">' +
+                    '<button class="collapse-btn" onclick="toggleCard(\'' +
+                    card.id +
+                    "')\">" +
+                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">' +
+                    '<path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>' +
+                    "</svg>" +
+                    "</button>" +
+                    '<div class="card-title" ondblclick="startEditTitle(\'' +
+                    card.id +
+                    "')\">" +
+                    escapeHtml(card.friendlyName) +
+                    "</div>" +
+                    '<input class="card-title-input" type="text" value="' +
+                    escapeHtml(card.friendlyName) +
+                    '" ' +
+                    "onblur=\"finishEditTitle('" +
+                    card.id +
+                    "', this)\" " +
+                    "onkeydown=\"handleTitleKey(event, '" +
+                    card.id +
+                    "', this)\">" +
+                    '<div class="card-actions">' +
+                    '<button class="icon-btn refresh-btn" onclick="refreshCard(\'' +
+                    card.id +
+                    '\')" title="Refresh">' +
+                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">' +
+                    '<path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>' +
+                    "</svg>" +
+                    "</button>" +
+                    '<button class="icon-btn" onclick="showEditModal(\'' +
+                    card.id +
+                    '\')" title="Edit query">' +
+                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">' +
+                    '<path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>' +
+                    "</svg>" +
+                    "</button>" +
+                    "</div>" +
+                    "</div>" +
+                    '<div class="card-body" id="body-' +
+                    card.id +
+                    '">' +
+                    (card.collapsed
+                        ? ""
+                        : '<div class="loading">Loading...</div>') +
+                    "</div>" +
+                    '<div class="card-form" id="form-' +
+                    card.id +
+                    '">' +
+                    '<div class="card-form-group">' +
+                    "<label>Name</label>" +
+                    '<input type="text" class="form-name" value="' +
+                    escapeHtml(card.friendlyName) +
+                    '" placeholder="e.g. Important">' +
+                    "</div>" +
+                    '<div class="card-form-group">' +
+                    "<label>Gmail Search Query</label>" +
+                    '<input type="text" class="form-query" value="' +
+                    escapeHtml(card.query) +
+                    '" placeholder="e.g. label:inbox is:unread">' +
+                    '<div class="card-form-filters">' +
+                    '<button type="button" class="filter-chip" data-filter="from:">From</button>' +
+                    '<button type="button" class="filter-chip" data-filter="to:">To</button>' +
+                    '<button type="button" class="filter-chip" data-filter="subject:">Subject</button>' +
+                    '<button type="button" class="filter-chip" data-filter="has:attachment">Attachment</button>' +
+                    '<button type="button" class="filter-chip" data-filter="label:">Label</button>' +
+                    '<button type="button" class="filter-chip" data-filter="is:unread">Unread</button>' +
+                    '<button type="button" class="filter-chip" data-filter="is:starred">Starred</button>' +
+                    '<button type="button" class="filter-chip" data-filter="is:important">Important</button>' +
+                    '<button type="button" class="filter-chip" data-filter="newer_than:">Newer than</button>' +
+                    '<button type="button" class="filter-chip" data-filter="older_than:">Older than</button>' +
+                    "</div>" +
+                    "</div>" +
+                    '<div class="card-form-group">' +
+                    "<label>Group by</label>" +
+                    '<div class="card-form-groupby">' +
+                    '<label class="groupby-option"><input type="radio" name="groupby-' +
+                    card.id +
+                    '" value="date"' +
+                    (card.groupBy !== "sender" ? " checked" : "") +
+                    "> Date</label>" +
+                    '<label class="groupby-option"><input type="radio" name="groupby-' +
+                    card.id +
+                    '" value="sender"' +
+                    (card.groupBy === "sender" ? " checked" : "") +
+                    "> Sender</label>" +
+                    "</div>" +
+                    "</div>" +
+                    '<div class="card-form-actions">' +
+                    (card.isNew
+                        ? ""
+                        : '<button type="button" class="btn btn-danger" onclick="confirmDeleteCard(\'' +
+                          card.id +
+                          "')\">Delete</button>") +
+                    '<div style="flex-grow:1"></div>' +
+                    '<button type="button" class="btn btn-secondary" onclick="cancelCardForm(\'' +
+                    card.id +
+                    "')\">Cancel</button>" +
+                    '<button type="button" class="btn" onclick="saveCardForm(\'' +
+                    card.id +
+                    "')\">Save</button>" +
+                    "</div>" +
+                    '<div class="card-form-preview" id="preview-' +
+                    card.id +
+                    '"></div>' +
+                    "</div>";
+
+                // Setup form filter chips and live preview
+                setTimeout(function () {
+                    var form = document.getElementById("form-" + card.id);
+                    if (!form) return;
+
+                    form.querySelectorAll(".filter-chip").forEach(
+                        function (chip) {
+                            chip.addEventListener("click", function () {
+                                var filter = this.dataset.filter;
+                                var input = form.querySelector(".form-query");
+                                var val = input.value;
+                                if (val && !val.endsWith(" ")) val += " ";
+                                input.value = val + filter;
+                                input.focus();
+                                input.setSelectionRange(
+                                    input.value.length,
+                                    input.value.length,
+                                );
+                                previewQuery(card.id);
+                            });
+                        },
+                    );
+
+                    var queryInput = form.querySelector(".form-query");
+                    var debounceTimer;
+                    queryInput.addEventListener("input", function () {
+                        clearTimeout(debounceTimer);
+                        debounceTimer = setTimeout(function () {
+                            previewQuery(card.id);
+                        }, 500);
+                    });
+
+                    // Re-preview on groupby change
+                    form.querySelectorAll(
+                        'input[name="groupby-' + card.id + '"]',
+                    ).forEach(function (radio) {
+                        radio.addEventListener("change", function () {
+                            previewQuery(card.id);
+                        });
+                    });
+                }, 0);
+
+                return div;
+            }
+
+            function toggleCard(cardId) {
+                var card = cards.find(function (c) {
+                    return c.id === cardId;
+                });
+                if (!card) return;
+
+                card.collapsed = !card.collapsed;
+
+                var el = document.querySelector(
+                    '.card[data-id="' + cardId + '"]',
+                );
+                if (el) {
+                    el.classList.toggle("collapsed", card.collapsed);
+                }
+
+                if (!card.collapsed && !cardData[cardId]) {
+                    var body = document.getElementById("body-" + cardId);
+                    body.innerHTML = '<div class="loading">Loading...</div>';
+                    loadThreads(cardId);
+                }
+
+                // Persist collapsed state
+                google.script.run.updateCard(cardId, {
+                    collapsed: card.collapsed,
+                });
+            }
+
+            function loadThreads(cardId, startIndex, silent) {
+                startIndex = startIndex || 0;
+
+                // Show spinner on refresh button
+                var refreshBtn = document.querySelector(
+                    '.card[data-id="' + cardId + '"] .refresh-btn',
+                );
+                if (refreshBtn) refreshBtn.classList.add("spinning");
+
+                // Only show loading text on initial load, not refresh
+                if (startIndex === 0 && !silent && !cardData[cardId]) {
+                    var body = document.getElementById("body-" + cardId);
+                    body.innerHTML = '<div class="loading">Loading...</div>';
+                }
+
+                google.script.run
+                    .withSuccessHandler(function (resp) {
+                        if (refreshBtn) refreshBtn.classList.remove("spinning");
+                        if (startIndex === 0) {
+                            cardData[cardId] = resp;
+                        } else {
+                            // Append to existing groups
+                            resp.groups.forEach(function (newGroup) {
+                                var existing = cardData[cardId].groups.find(
+                                    function (g) {
+                                        return g.label === newGroup.label;
+                                    },
+                                );
+                                if (existing) {
+                                    existing.threads = existing.threads.concat(
+                                        newGroup.threads,
+                                    );
+                                } else {
+                                    cardData[cardId].groups.push(newGroup);
+                                }
+                            });
+                            cardData[cardId].nextStart = resp.nextStart;
+                            cardData[cardId].hasMore = resp.hasMore;
+                        }
+                        cardData[cardId].loading = false;
+                        renderThreads(cardId);
+                    })
+                    .withFailureHandler(function (err) {
+                        if (refreshBtn) refreshBtn.classList.remove("spinning");
+                        if (cardData[cardId]) cardData[cardId].loading = false;
+                        // Only show error if no existing data
+                        if (!cardData[cardId]) {
+                            var body = document.getElementById(
+                                "body-" + cardId,
+                            );
+                            body.innerHTML =
+                                '<div class="empty">Error: ' +
+                                escapeHtml(err.message) +
+                                "</div>";
+                        }
+                    })
+                    .fetchThreadsForCard(cardId, startIndex);
+            }
+
+            function renderThreads(cardId) {
+                var body = document.getElementById("body-" + cardId);
+                var data = cardData[cardId];
+
+                if (!data || !data.groups || data.groups.length === 0) {
+                    body.innerHTML =
+                        '<div class="empty">No messages found</div>';
+                    return;
+                }
+
+                var html = "";
+                data.groups.forEach(function (group) {
+                    html += '<div class="date-group">';
+                    html +=
+                        '<div class="date-header">' +
+                        escapeHtml(group.label) +
+                        "</div>";
+                    group.threads.forEach(function (t) {
+                        html +=
+                            '<div class="thread' +
+                            (t.unread ? " unread" : "") +
+                            '" data-thread="' +
+                            t.threadId +
+                            '" onclick="openThread(\'' +
+                            t.threadId +
+                            "')\">";
+                        html += '<div class="thread-row">';
+                        if (t.unread)
+                            html += '<div class="unread-badge"></div>';
+                        html +=
+                            '<div class="thread-subject">' +
+                            escapeHtml(t.subject) +
+                            "</div>";
+                        html +=
+                            '<div class="thread-time">' +
+                            formatTime(t.lastMsgDate) +
+                            "</div>";
+                        html += "</div>";
+                        html +=
+                            '<div class="thread-snippet">' +
+                            escapeHtml(t.snippet) +
+                            "</div>";
+                        if (t.participants) {
+                            html +=
+                                '<div class="thread-participants">' +
+                                escapeHtml(t.participants) +
+                                "</div>";
+                        }
+                        html += '<div class="thread-actions">';
+                        if (settings.actions.archive) {
+                            html +=
+                                '<button class="thread-action archive" onclick="event.stopPropagation(); archiveThread(\'' +
+                                cardId +
+                                "', '" +
+                                t.threadId +
+                                '\')" title="Archive">' +
+                                '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>' +
+                                "</button>";
+                        }
+                        if (settings.actions.star) {
+                            html +=
+                                '<button class="thread-action star" onclick="event.stopPropagation(); starThread(\'' +
+                                cardId +
+                                "', '" +
+                                t.threadId +
+                                '\')" title="Star">' +
+                                '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>' +
+                                "</button>";
+                        }
+                        if (settings.actions.markRead) {
+                            var readTitle = t.unread
+                                ? "Mark as read"
+                                : "Mark as unread";
+                            var readIcon = t.unread
+                                ? '<path d="M21.99 8c0-.72-.37-1.35-.94-1.7L12 1 2.95 6.3C2.38 6.65 2 7.28 2 8v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2l-.01-10zM12 13L3.74 7.84 12 3l8.26 4.84L12 13z"/>'
+                                : '<path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>';
+                            html +=
+                                '<button class="thread-action mark-read" onclick="event.stopPropagation(); toggleReadThread(\'' +
+                                cardId +
+                                "', '" +
+                                t.threadId +
+                                "', " +
+                                (t.unread ? "true" : "false") +
+                                ')" title="' +
+                                readTitle +
+                                '">' +
+                                '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">' +
+                                readIcon +
+                                "</svg>" +
+                                "</button>";
+                        }
+                        if (settings.actions.markImportant) {
+                            html +=
+                                '<button class="thread-action mark-important" onclick="event.stopPropagation(); toggleImportantThread(\'' +
+                                cardId +
+                                "', '" +
+                                t.threadId +
+                                '\')" title="Mark as important">' +
+                                '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>' +
+                                "</button>";
+                        }
+                        if (settings.actions.snooze) {
+                            html +=
+                                '<button class="thread-action snooze" onclick="event.stopPropagation(); snoozeThread(\'' +
+                                cardId +
+                                "', '" +
+                                t.threadId +
+                                '\')" title="Snooze">' +
+                                '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>' +
+                                "</button>";
+                        }
+                        if (settings.actions.trash) {
+                            html +=
+                                '<button class="thread-action trash" onclick="event.stopPropagation(); trashThread(\'' +
+                                cardId +
+                                "', '" +
+                                t.threadId +
+                                '\')" title="Delete">' +
+                                '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>' +
+                                "</button>";
+                        }
+                        html += "</div>";
+                        html += "</div>";
+                    });
+                    html += "</div>";
+                });
+
+                body.innerHTML = html;
+
+                // Setup infinite scroll
+                if (data.hasMore) {
+                    body.onscroll = function () {
+                        if (
+                            body.scrollTop + body.clientHeight >=
+                            body.scrollHeight - 50
+                        ) {
+                            if (!cardData[cardId].loading) {
+                                loadMore(cardId);
+                            }
+                        }
+                    };
+                } else {
+                    body.onscroll = null;
+                }
+            }
+
+            function loadMore(cardId) {
+                var data = cardData[cardId];
+                if (data && data.nextStart && !data.loading) {
+                    data.loading = true;
+                    loadThreads(cardId, data.nextStart);
+                }
+            }
+
+            function refreshCard(cardId) {
+                loadThreads(cardId, 0, true);
+            }
+
+            function startEditTitle(cardId) {
+                var cardEl = document.querySelector(
+                    '.card[data-id="' + cardId + '"]',
+                );
+                if (!cardEl || cardEl.classList.contains("collapsed")) return;
+                cardEl.classList.add("editing");
+                var input = cardEl.querySelector(".card-title-input");
+                input.focus();
+                input.select();
+            }
+
+            function finishEditTitle(cardId, input) {
+                var cardEl = document.querySelector(
+                    '.card[data-id="' + cardId + '"]',
+                );
+                if (!cardEl) return;
+                cardEl.classList.remove("editing");
+
+                var newName = input.value.trim();
+                if (!newName) return;
+
+                var card = cards.find(function (c) {
+                    return c.id === cardId;
+                });
+                if (card && card.friendlyName !== newName) {
+                    card.friendlyName = newName;
+                    cardEl.querySelector(".card-title").textContent = newName;
+                    google.script.run.updateCard(cardId, {
+                        friendlyName: newName,
+                    });
+                }
+            }
+
+            function handleTitleKey(e, cardId, input) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    input.blur();
+                } else if (e.key === "Escape") {
+                    var card = cards.find(function (c) {
+                        return c.id === cardId;
+                    });
+                    if (card) input.value = card.friendlyName;
+                    input.blur();
+                }
+            }
+
+            function reorderCard(draggedId, targetId) {
+                var draggedIdx = cards.findIndex(function (c) {
+                    return c.id === draggedId;
+                });
+                var targetIdx = cards.findIndex(function (c) {
+                    return c.id === targetId;
+                });
+                if (draggedIdx === -1 || targetIdx === -1) return;
+
+                var dragged = cards.splice(draggedIdx, 1)[0];
+                // Recalculate target index after removal
+                targetIdx = cards.findIndex(function (c) {
+                    return c.id === targetId;
+                });
+                cards.splice(targetIdx, 0, dragged);
+
+                // Update order values
+                cards.forEach(function (c, i) {
+                    c.order = i;
+                });
+
+                renderCards();
+                // Reload threads for expanded cards (to restore content)
+                cards.forEach(function (card) {
+                    if (!card.collapsed && cardData[card.id]) {
+                        renderThreads(card.id);
+                    }
+                });
+
+                // Save to server
+                var orderedIds = cards.map(function (c) {
+                    return c.id;
+                });
+                google.script.run.reorderCards(orderedIds);
+            }
+
+            function openThread(threadId) {
+                // type needs double-encoding, th needs single-encoding
+                var threadRef = "#thread-f:" + threadId;
+                var singleEncoded = encodeURIComponent(threadRef);
+                var doubleEncoded = encodeURIComponent(singleEncoded);
+                var url =
+                    "https://mail.google.com/mail/u/0/popout?search=inbox&type=" +
+                    doubleEncoded +
+                    "&th=" +
+                    singleEncoded;
+                window.open(url, "_blank");
+            }
+
+            function archiveThread(cardId, threadId) {
+                removeThreadFromUI(cardId, threadId);
+                google.script.run.archiveThread(threadId);
+            }
+
+            function starThread(cardId, threadId) {
+                google.script.run.starThread(threadId, true);
+            }
+
+            function trashThread(cardId, threadId) {
+                removeThreadFromUI(cardId, threadId);
+                google.script.run.trashThread(threadId);
+            }
+
+            function toggleReadThread(cardId, threadId, markAsRead) {
+                // Update UI immediately
+                var threadEl = document.querySelector(
+                    '.thread[data-thread="' + threadId + '"]',
+                );
+                if (threadEl) {
+                    threadEl.classList.toggle("unread", !markAsRead);
+                    var badge = threadEl.querySelector(".unread-badge");
+                    if (markAsRead && badge) badge.remove();
+                    if (!markAsRead && !badge) {
+                        var row = threadEl.querySelector(".thread-row");
+                        var newBadge = document.createElement("div");
+                        newBadge.className = "unread-badge";
+                        row.insertBefore(newBadge, row.firstChild);
+                    }
+                }
+                // Update data
+                if (cardData[cardId]) {
+                    cardData[cardId].groups.forEach(function (g) {
+                        g.threads.forEach(function (t) {
+                            if (t.threadId === threadId)
+                                t.unread = markAsRead ? 0 : 1;
+                        });
+                    });
+                }
+                google.script.run.markThreadRead(threadId, markAsRead);
+            }
+
+            function toggleImportantThread(cardId, threadId) {
+                google.script.run.toggleImportant(threadId);
+            }
+
+            function snoozeThread(cardId, threadId) {
+                // Snooze requires Gmail API with specific scopes not available in basic GmailApp
+                // For now, show a message and open Gmail where user can snooze manually
+                alert(
+                    "Snooze is not directly supported. Opening thread in Gmail where you can snooze it.",
+                );
+                openThread(threadId);
+            }
+
+            function removeThreadFromUI(cardId, threadId) {
+                // Remove from UI immediately
+                var threadEl = document.querySelector(
+                    '.thread[data-thread="' + threadId + '"]',
+                );
+                if (threadEl) {
+                    threadEl.style.opacity = "0";
+                    threadEl.style.height = threadEl.offsetHeight + "px";
+                    setTimeout(function () {
+                        threadEl.style.height = "0";
+                        threadEl.style.padding = "0";
+                        threadEl.style.margin = "0";
+                        threadEl.style.overflow = "hidden";
+                    }, 150);
+                    setTimeout(function () {
+                        threadEl.remove();
+                    }, 300);
+                }
+                // Remove from data
+                if (cardData[cardId]) {
+                    cardData[cardId].groups.forEach(function (g) {
+                        g.threads = g.threads.filter(function (t) {
+                            return t.threadId !== threadId;
+                        });
+                    });
+                }
+            }
+
+            function openCompose(toEmail) {
+                var url = "https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1";
+                if (toEmail) url += "&to=" + encodeURIComponent(toEmail);
+                window.open(url, "compose", "width=600,height=600");
+            }
+
+            // Recent recipients for compose menu
+            var recentRecipients = null;
+            var recipientsLoading = false;
+
+            function loadRecentRecipients() {
+                if (recentRecipients || recipientsLoading) return;
+                recipientsLoading = true;
+
+                google.script.run
+                    .withSuccessHandler(function (recipients) {
+                        recentRecipients = recipients;
+                        recipientsLoading = false;
+                        renderComposeMenu();
+                    })
+                    .withFailureHandler(function () {
+                        recipientsLoading = false;
+                        document.getElementById("composeMenu").innerHTML = "";
+                    })
+                    .getRecentRecipients(8);
+            }
+
+            function renderComposeMenu() {
+                var menu = document.getElementById("composeMenu");
+                if (!recentRecipients || recentRecipients.length === 0) {
+                    menu.innerHTML = "";
+                    return;
+                }
+
+                var html = "";
+                recentRecipients.forEach(function (r) {
+                    html +=
+                        '<div class="compose-menu-item" onclick="openCompose(\'' +
+                        escapeHtml(r.email) +
+                        "')\">";
+                    html +=
+                        '<div class="compose-menu-name">' +
+                        escapeHtml(r.name) +
+                        "</div>";
+                    html +=
+                        '<div class="compose-menu-email">' +
+                        escapeHtml(r.email) +
+                        "</div>";
+                    html += "</div>";
+                });
+                menu.innerHTML = html;
+            }
+
+            // Load recipients on hover
+            document
+                .querySelector(".compose-wrapper")
+                .addEventListener("mouseenter", loadRecentRecipients);
+
+            // Close settings/forms on Escape
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape") {
+                    // Close settings sidebar
+                    var sidebar = document.getElementById("settingsSidebar");
+                    if (sidebar.classList.contains("open")) {
+                        toggleSettings();
+                        return;
+                    }
+                    // Cancel any open card forms
+                    document
+                        .querySelectorAll(".card.form-mode")
+                        .forEach(function (card) {
+                            cancelCardForm(card.dataset.id);
+                        });
+                }
+            });
+
+            function formatTime(isoDate) {
+                var d = new Date(isoDate);
+                var now = new Date();
+                var today = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
+                var dateOnly = new Date(
+                    d.getFullYear(),
+                    d.getMonth(),
+                    d.getDate(),
+                );
+
+                if (dateOnly.getTime() === today.getTime()) {
+                    return d.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                    });
+                }
+
+                var yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                if (dateOnly.getTime() === yesterday.getTime()) {
+                    return "Yesterday";
+                }
+
+                if (d.getFullYear() === now.getFullYear()) {
+                    return d.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                    });
+                }
+
+                return d.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                });
+            }
+
+            // Card form functions
+            var pendingNewCard = null;
+
+            function showAddModal() {
+                // Don't create another if one is already open
+                if (pendingNewCard) {
+                    var existing = document.querySelector(
+                        '.card[data-id="' + pendingNewCard.id + '"]',
+                    );
+                    if (existing) {
+                        existing.querySelector(".form-name").focus();
+                        return;
+                    }
+                }
+
+                // Create a temporary card for the new card form
+                pendingNewCard = {
+                    id: "new-" + Date.now(),
+                    friendlyName: "",
+                    query: "",
+                    collapsed: false,
+                    order: cards.length,
+                    isNew: true,
+                };
+
+                var container = document.getElementById("cardRow");
+                var addBtn = container.querySelector(".add-card");
+
+                var el = createCardElement(pendingNewCard);
+                el.classList.add("form-mode");
+                container.insertBefore(el, addBtn);
+
+                // Focus the name input
+                setTimeout(function () {
+                    var nameInput = el.querySelector(".form-name");
+                    if (nameInput) nameInput.focus();
+                }, 50);
+            }
+
+            function showEditModal(cardId) {
+                var cardEl = document.querySelector(
+                    '.card[data-id="' + cardId + '"]',
+                );
+                if (!cardEl) return;
+
+                cardEl.classList.add("form-mode");
+
+                // Load preview with current query
+                var card = cards.find(function (c) {
+                    return c.id === cardId;
+                });
+                if (card && card.query) {
+                    previewQuery(cardId);
+                }
+
+                // Focus query input
+                setTimeout(function () {
+                    var queryInput = cardEl.querySelector(".form-query");
+                    if (queryInput) queryInput.focus();
+                }, 50);
+            }
+
+            function cancelCardForm(cardId) {
+                var cardEl = document.querySelector(
+                    '.card[data-id="' + cardId + '"]',
+                );
+                if (!cardEl) return;
+
+                // If it's a new card, remove it
+                if (cardId.startsWith("new-")) {
+                    cardEl.remove();
+                    pendingNewCard = null;
+                    return;
+                }
+
+                // Otherwise just exit form mode and restore values
+                cardEl.classList.remove("form-mode");
+                var card = cards.find(function (c) {
+                    return c.id === cardId;
+                });
+                if (card) {
+                    cardEl.querySelector(".form-name").value =
+                        card.friendlyName;
+                    cardEl.querySelector(".form-query").value = card.query;
+                }
+            }
+
+            function saveCardForm(cardId) {
+                var cardEl = document.querySelector(
+                    '.card[data-id="' + cardId + '"]',
+                );
+                if (!cardEl) return;
+
+                var name = cardEl.querySelector(".form-name").value.trim();
+                var query = cardEl.querySelector(".form-query").value.trim();
+                var groupByRadio = cardEl.querySelector(
+                    'input[name="groupby-' + cardId + '"]:checked',
+                );
+                var groupBy = groupByRadio ? groupByRadio.value : "date";
+
+                if (!name) {
+                    cardEl.querySelector(".form-name").focus();
+                    return;
+                }
+                if (!query) {
+                    cardEl.querySelector(".form-query").focus();
+                    return;
+                }
+
+                if (cardId.startsWith("new-")) {
+                    // Create new card
+                    google.script.run
+                        .withSuccessHandler(function (newCard) {
+                            cardEl.remove();
+                            pendingNewCard = null;
+                            cards.push(newCard);
+                            renderCards();
+                            loadThreads(newCard.id);
+                        })
+                        .addCard({
+                            friendlyName: name,
+                            query: query,
+                            groupBy: groupBy,
+                        });
+                } else {
+                    // Update existing
+                    google.script.run
+                        .withSuccessHandler(function (updated) {
+                            var idx = cards.findIndex(function (c) {
+                                return c.id === cardId;
+                            });
+                            if (idx !== -1) {
+                                cards[idx] = updated;
+                                cardData[cardId] = null;
+                            }
+                            cardEl.classList.remove("form-mode");
+                            cardEl.querySelector(".card-title").textContent =
+                                name;
+                            loadThreads(cardId);
+                        })
+                        .updateCard(cardId, {
+                            friendlyName: name,
+                            query: query,
+                            groupBy: groupBy,
+                        });
+                }
+            }
+
+            function previewQuery(cardId) {
+                var cardEl = document.querySelector(
+                    '.card[data-id="' + cardId + '"]',
+                );
+                if (!cardEl) return;
+
+                var query = cardEl.querySelector(".form-query").value.trim();
+                var groupByRadio = cardEl.querySelector(
+                    'input[name="groupby-' + cardId + '"]:checked',
+                );
+                var groupBy = groupByRadio ? groupByRadio.value : "date";
+                var preview = document.getElementById("preview-" + cardId);
+
+                if (!query) {
+                    preview.innerHTML =
+                        '<div class="empty">Enter a query to preview results</div>';
+                    return;
+                }
+
+                preview.innerHTML = '<div class="loading">Searching...</div>';
+
+                google.script.run
+                    .withSuccessHandler(function (resp) {
+                        if (!resp.groups || resp.groups.length === 0) {
+                            preview.innerHTML =
+                                '<div class="empty">No results</div>';
+                            return;
+                        }
+                        var html = "";
+                        resp.groups.forEach(function (group) {
+                            html += '<div class="date-group">';
+                            html +=
+                                '<div class="date-header">' +
+                                escapeHtml(group.label) +
+                                "</div>";
+                            group.threads.forEach(function (t) {
+                                html +=
+                                    '<div class="thread' +
+                                    (t.unread ? " unread" : "") +
+                                    '">';
+                                html += '<div class="thread-row">';
+                                if (t.unread)
+                                    html += '<div class="unread-badge"></div>';
+                                html +=
+                                    '<div class="thread-subject">' +
+                                    escapeHtml(t.subject) +
+                                    "</div>";
+                                html += "</div>";
+                                html +=
+                                    '<div class="thread-snippet">' +
+                                    escapeHtml(t.snippet) +
+                                    "</div>";
+                                html += "</div>";
+                            });
+                            html += "</div>";
+                        });
+                        if (resp.count >= 10) {
+                            html +=
+                                '<div class="empty">Showing first 10 results</div>';
+                        }
+                        preview.innerHTML = html;
+                    })
+                    .withFailureHandler(function (err) {
+                        preview.innerHTML =
+                            '<div class="empty">Error: ' +
+                            escapeHtml(err.message) +
+                            "</div>";
+                    })
+                    .previewQuery(query, groupBy);
+            }
+
+            function confirmDeleteCard(cardId) {
+                var card = cards.find(function (c) {
+                    return c.id === cardId;
+                });
+                if (!card) return;
+
+                if (confirm('Delete "' + card.friendlyName + '"?')) {
+                    google.script.run
+                        .withSuccessHandler(function (updated) {
+                            cards = updated;
+                            delete cardData[cardId];
+                            renderCards();
+                        })
+                        .deleteCard(cardId);
+                }
+            }
+
+            function escapeHtml(str) {
+                if (!str) return "";
+                var div = document.createElement("div");
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // Initialize
+            init();
+        </script>
+    </body>
+</html>
