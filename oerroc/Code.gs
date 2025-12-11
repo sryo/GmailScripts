@@ -1,5 +1,47 @@
 // Gmail Cards - Server functions
 
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+// Cache configuration
+var CACHE_TTL = 300; // 5 minutes
+var CACHE_PREFIX = 'gc_';
+
+function getCacheKey(cardId, startIndex) {
+  return CACHE_PREFIX + cardId + '_' + (startIndex || 0);
+}
+
+function getCachedData(key) {
+  var cache = CacheService.getUserCache();
+  var data = cache.get(key);
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch(e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+function setCachedData(key, data) {
+  var cache = CacheService.getUserCache();
+  try {
+    cache.put(key, JSON.stringify(data), CACHE_TTL);
+  } catch(e) {
+    // Cache might be too large, skip caching
+  }
+}
+
+function invalidateCardCache(cardId) {
+  var cache = CacheService.getUserCache();
+  // Remove first few pages of cache for this card
+  for (var i = 0; i < 5; i++) {
+    cache.remove(getCacheKey(cardId, i * 20));
+  }
+}
+
 function doGet() {
   var template = HtmlService.createTemplateFromFile('index');
   template.cards = JSON.stringify(getCards());
@@ -32,7 +74,11 @@ function addCard(data) {
     query: data.query || '',
     groupBy: data.groupBy || 'date',
     collapsed: false,
-    order: cards.length
+    order: cards.length,
+    bgColor: data.bgColor || '',
+    bgColorLight: data.bgColorLight || '',
+    bgColorDark: data.bgColorDark || '',
+    borderColor: data.borderColor || ''
   };
   cards.push(card);
   saveCards(cards);
@@ -103,15 +149,26 @@ function previewQuery(query, groupBy) {
   return { groups: groups, count: threads.length };
 }
 
-function fetchThreadsForCard(cardId, startIndex) {
+function fetchThreadsForCard(cardId, startIndex, skipCache) {
   var cards = getCards();
   var card = cards.find(function(c) { return c.id === cardId; });
   if (!card) throw new Error('Card not found');
 
+  var start = startIndex || 0;
+  var cacheKey = getCacheKey(cardId, start);
+
+  // Check cache first (unless skipCache is true)
+  if (!skipCache) {
+    var cached = getCachedData(cacheKey);
+    if (cached) {
+      cached.fromCache = true;
+      return cached;
+    }
+  }
+
   var query = card.query;
   var groupBy = card.groupBy || 'date';
   var max = 20;
-  var start = startIndex || 0;
   var threads = GmailApp.search(query, start, max);
   var tz = Session.getScriptTimeZone() || 'America/Argentina/Cordoba';
 
@@ -120,6 +177,8 @@ function fetchThreadsForCard(cardId, startIndex) {
     var lastMsg = msgs[msgs.length - 1];
     var participants = extractParticipants(msgs);
     var sender = extractSender(lastMsg);
+    // Only include attachment metadata (lazy load actual data)
+    var attachmentMeta = extractAttachmentMeta(msgs);
     return {
       threadId: t.getId(),
       subject: t.getFirstMessageSubject() || '(no subject)',
@@ -127,17 +186,149 @@ function fetchThreadsForCard(cardId, startIndex) {
       lastMsgDate: lastMsg.getDate().toISOString(),
       unread: t.isUnread() ? 1 : 0,
       participants: participants,
-      sender: sender
+      sender: sender,
+      hasAttachments: attachmentMeta.length > 0,
+      attachmentCount: attachmentMeta.length,
+      attachmentMeta: attachmentMeta
     };
   });
 
   var groups = groupThreads(result, groupBy, tz);
 
-  return {
+  var response = {
     groups: groups,
     nextStart: start + result.length,
-    hasMore: result.length === max
+    hasMore: result.length === max,
+    fromCache: false
   };
+
+  // Cache the result
+  setCachedData(cacheKey, response);
+
+  return response;
+}
+
+// Extract only attachment metadata (no previews) for lazy loading
+function extractAttachmentMeta(msgs) {
+  var attachments = [];
+  var seen = {};
+
+  msgs.forEach(function(msg, msgIndex) {
+    var msgAttachments = msg.getAttachments();
+    msgAttachments.forEach(function(att, attIndex) {
+      var name = att.getName();
+      var key = name + '_' + att.getSize();
+
+      if (seen[key]) return;
+      seen[key] = true;
+
+      var contentType = att.getContentType();
+      var size = att.getSize();
+      var isImage = contentType && contentType.indexOf('image/') === 0;
+
+      attachments.push({
+        name: name,
+        contentType: contentType,
+        size: size,
+        isImage: isImage,
+        msgIndex: msgIndex,
+        attIndex: attIndex
+      });
+    });
+  });
+
+  return attachments;
+}
+
+// Lazy load attachment preview for a specific thread
+function loadAttachmentPreview(threadId, msgIndex, attIndex) {
+  var thread = GmailApp.getThreadById(threadId);
+  if (!thread) throw new Error('Thread not found');
+
+  var msgs = thread.getMessages();
+  if (msgIndex >= msgs.length) throw new Error('Message not found');
+
+  var msg = msgs[msgIndex];
+  var attachments = msg.getAttachments();
+  if (attIndex >= attachments.length) throw new Error('Attachment not found');
+
+  var att = attachments[attIndex];
+  var contentType = att.getContentType();
+  var size = att.getSize();
+  var isImage = contentType && contentType.indexOf('image/') === 0;
+
+  var result = {
+    name: att.getName(),
+    contentType: contentType,
+    size: size,
+    isImage: isImage
+  };
+
+  // For small images, include base64 preview
+  if (isImage && size < 100000) {
+    try {
+      var bytes = att.copyBlob().getBytes();
+      var base64 = Utilities.base64Encode(bytes);
+      result.preview = 'data:' + contentType + ';base64,' + base64;
+    } catch(e) {
+      // Skip preview if encoding fails
+    }
+  }
+
+  return result;
+}
+
+// Load all attachment previews for a thread
+function loadThreadAttachments(threadId) {
+  var thread = GmailApp.getThreadById(threadId);
+  if (!thread) throw new Error('Thread not found');
+
+  var msgs = thread.getMessages();
+  return extractAttachments(msgs);
+}
+
+// Extract attachments from all messages in a thread
+function extractAttachments(msgs) {
+  var attachments = [];
+  var seen = {};
+
+  msgs.forEach(function(msg) {
+    var msgAttachments = msg.getAttachments();
+    msgAttachments.forEach(function(att) {
+      var name = att.getName();
+      var key = name + '_' + att.getSize();
+
+      // Skip duplicates
+      if (seen[key]) return;
+      seen[key] = true;
+
+      var contentType = att.getContentType();
+      var size = att.getSize();
+      var isImage = contentType && contentType.indexOf('image/') === 0;
+
+      var attachment = {
+        name: name,
+        contentType: contentType,
+        size: size,
+        isImage: isImage
+      };
+
+      // For small images (< 100KB), include base64 preview
+      if (isImage && size < 100000) {
+        try {
+          var bytes = att.copyBlob().getBytes();
+          var base64 = Utilities.base64Encode(bytes);
+          attachment.preview = 'data:' + contentType + ';base64,' + base64;
+        } catch(e) {
+          // Skip preview if encoding fails
+        }
+      }
+
+      attachments.push(attachment);
+    });
+  });
+
+  return attachments;
 }
 
 function extractSender(msg) {
@@ -246,6 +437,12 @@ function archiveThread(threadId) {
   return { success: true };
 }
 
+function unarchiveThread(threadId) {
+  var thread = GmailApp.getThreadById(threadId);
+  if (thread) thread.moveToInbox();
+  return { success: true };
+}
+
 function starThread(threadId, star) {
   var thread = GmailApp.getThreadById(threadId);
   if (thread) {
@@ -286,6 +483,156 @@ function trashThread(threadId) {
   var thread = GmailApp.getThreadById(threadId);
   if (thread) thread.moveToTrash();
   return { success: true };
+}
+
+function untrashThread(threadId) {
+  var thread = GmailApp.getThreadById(threadId);
+  if (thread) thread.untrash();
+  return { success: true };
+}
+
+// Bulk actions
+function bulkArchiveThreads(threadIds) {
+  var results = { success: 0, failed: 0 };
+  threadIds.forEach(function(threadId) {
+    try {
+      var thread = GmailApp.getThreadById(threadId);
+      if (thread) {
+        thread.moveToArchive();
+        results.success++;
+      } else {
+        results.failed++;
+      }
+    } catch(e) {
+      results.failed++;
+    }
+  });
+  return results;
+}
+
+function bulkTrashThreads(threadIds) {
+  var results = { success: 0, failed: 0 };
+  threadIds.forEach(function(threadId) {
+    try {
+      var thread = GmailApp.getThreadById(threadId);
+      if (thread) {
+        thread.moveToTrash();
+        results.success++;
+      } else {
+        results.failed++;
+      }
+    } catch(e) {
+      results.failed++;
+    }
+  });
+  return results;
+}
+
+function bulkMarkRead(threadIds, read) {
+  var results = { success: 0, failed: 0 };
+  threadIds.forEach(function(threadId) {
+    try {
+      var thread = GmailApp.getThreadById(threadId);
+      if (thread) {
+        if (read) thread.markRead();
+        else thread.markUnread();
+        results.success++;
+      } else {
+        results.failed++;
+      }
+    } catch(e) {
+      results.failed++;
+    }
+  });
+  return results;
+}
+
+function bulkStarThreads(threadIds, star) {
+  var results = { success: 0, failed: 0 };
+  threadIds.forEach(function(threadId) {
+    try {
+      var thread = GmailApp.getThreadById(threadId);
+      if (thread) {
+        thread.getMessages().forEach(function(m) {
+          if (star) m.star();
+          else m.unstar();
+        });
+        results.success++;
+      } else {
+        results.failed++;
+      }
+    } catch(e) {
+      results.failed++;
+    }
+  });
+  return results;
+}
+
+function bulkUnarchiveThreads(threadIds) {
+  var results = { success: 0, failed: 0 };
+  threadIds.forEach(function(threadId) {
+    try {
+      var thread = GmailApp.getThreadById(threadId);
+      if (thread) {
+        thread.moveToInbox();
+        results.success++;
+      } else {
+        results.failed++;
+      }
+    } catch(e) {
+      results.failed++;
+    }
+  });
+  return results;
+}
+
+function bulkUntrashThreads(threadIds) {
+  var results = { success: 0, failed: 0 };
+  threadIds.forEach(function(threadId) {
+    try {
+      var thread = GmailApp.getThreadById(threadId);
+      if (thread) {
+        thread.untrash();
+        results.success++;
+      } else {
+        results.failed++;
+      }
+    } catch(e) {
+      results.failed++;
+    }
+  });
+  return results;
+}
+
+// Quick reply
+function sendQuickReply(threadId, body) {
+  var thread = GmailApp.getThreadById(threadId);
+  if (!thread) throw new Error('Thread not found');
+
+  var msgs = thread.getMessages();
+  var lastMsg = msgs[msgs.length - 1];
+
+  // Reply to the last message
+  lastMsg.reply(body);
+
+  return { success: true };
+}
+
+function getThreadForReply(threadId) {
+  var thread = GmailApp.getThreadById(threadId);
+  if (!thread) throw new Error('Thread not found');
+
+  var msgs = thread.getMessages();
+  var lastMsg = msgs[msgs.length - 1];
+
+  return {
+    threadId: threadId,
+    subject: thread.getFirstMessageSubject() || '(no subject)',
+    from: lastMsg.getFrom(),
+    to: lastMsg.getTo(),
+    date: lastMsg.getDate().toISOString(),
+    snippet: lastMsg.getPlainBody().slice(0, 500).replace(/\s+/g, ' ')
+  };
 }
 
 // Get recent recipients from sent mail
