@@ -6,7 +6,7 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 var userProperties = PropertiesService.getUserProperties();
 var lastCleanedTime = userProperties.getProperty('lastCleanedTime');
 if (lastCleanedTime == null) {
-  lastCleanedTime = new Date(); // initialize with current time
+  lastCleanedTime = new Date().toISOString();
   userProperties.setProperty('lastCleanedTime', lastCleanedTime);
 }
 var cleanedInCurrentIteration = false; // keep track of whether labels were added in current iteration
@@ -27,7 +27,7 @@ function archiveInbox() {
   if (threads.length > 0) {
     Logger.log('📦 Found ' + threads.length + ' threads to move to archive.');
     cleanedInCurrentIteration = true;
-    lastCleanedTime = new Date(); // update last label added time
+    lastCleanedTime = new Date().toISOString();
 
     // Move the emails to archive
     for (var i = 0; i < threads.length; i++) {
@@ -42,7 +42,7 @@ function markDoneAsRead() {
   if (threads.length > 0) {
     Logger.log('📖 Found ' + threads.length + ' threads to mark as read.');
     cleanedInCurrentIteration = true;
-    lastCleanedTime = new Date(); // update last label added time
+    lastCleanedTime = new Date().toISOString();
 
     // Mark the emails as read
     for (var i = 0; i < threads.length; i++) {
@@ -56,11 +56,11 @@ var labelName = '🗑️';
 
 function preTrashLowPriority() {
   // Search for unimportant emails
-  var threads = GmailApp.search('-label:labelName AND label:low_priority OR label:promos OR category:updates -is:important -label:pinned -label:snoozed -label:done');
+  var threads = GmailApp.search('-label:' + labelName + ' AND (label:low_priority OR label:promos OR category:updates) -is:important -label:pinned -label:snoozed -label:done');
   if (threads.length > 0) {
     Logger.log('🗑️ Found ' + threads.length + ' low priority threads.');
     cleanedInCurrentIteration = true;
-    lastCleanedTime = new Date(); // update last label added time
+    lastCleanedTime = new Date().toISOString();
 
     // Get the label with the specified name, or create it if it does not exist
     var label = GmailApp.getUserLabelByName(labelName);
@@ -91,7 +91,7 @@ function deleteOlder() {
   if (threads.length > 0) {
     Logger.log('🧹 Found ' + threads.length + ' threads to delete.');
     cleanedInCurrentIteration = true;
-    lastCleanedTime = new Date(); // update last label added time
+    lastCleanedTime = new Date().toISOString();
 
     // Delete the threads
     for (var i = 0; i < threads.length; i++) {
@@ -105,7 +105,7 @@ function markPinnedAsImportant() {
   if (threads.length > 0) {
     Logger.log('⭐ Found ' + threads.length + ' important threads.');
     cleanedInCurrentIteration = true;
-    lastCleanedTime = new Date(); // update last label added time
+    lastCleanedTime = new Date().toISOString();
 
     // Mark the emails as important
     for (var i = 0; i < threads.length; i++) {
@@ -119,7 +119,7 @@ function markTrashAsUnimportant() {
   if (threads.length > 0) {
     Logger.log('📉 Found ' + threads.length + ' important threads in trash.');
     cleanedInCurrentIteration = true;
-    lastCleanedTime = new Date(); // update last label added time
+    lastCleanedTime = new Date().toISOString();
 
     // Mark the emails as not important
     for (var i = 0; i < threads.length; i++) {
@@ -137,8 +137,7 @@ function removeEmptyLabels() {
   if (offset == null || offset >= labels.length) {
     offset = 0;
   }
-  // convert offset from string to number
-  offset = offset++;
+  offset = parseInt(offset);
 
   if (labels.length > 0) {
     var progress = "";
@@ -161,11 +160,11 @@ function removeEmptyLabels() {
 
   for (var i = offset; i < offset + limit && i < labels.length; i++) {
     var threads = labels[i].getThreads();
-    if (threads == "") {
+    if (threads.length === 0) {
       labels[i].deleteLabel();
       Logger.log("🏷️ Deleted empty label: " + labels[i].getName());
       cleanedInCurrentIteration = true;
-      lastCleanedTime = new Date(); // update last label added time
+      lastCleanedTime = new Date().toISOString();
     }
   }
   userProperties.setProperty('offset', i);
