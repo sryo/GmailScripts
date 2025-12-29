@@ -10,8 +10,7 @@ const LABEL_VISIBILITY = 'labelHide';
 function tagEmailsByDomain() {
   let pageToken;
   const userProperties = PropertiesService.getUserProperties();
-  let lastLabelAddedTime = getLastLabelAddedTime(userProperties);
-  
+
   do {
     try {
       const threads = fetchThreads(pageToken);
@@ -46,44 +45,44 @@ function fetchThreads(pageToken) {
 
 function processThreads(threads, userProperties) {
   let labelsAddedInCurrentIteration = false;
-  
-  threads.forEach(thread => {
+
+  for (const thread of threads) {
     try {
       const threadDetails = Gmail.Users.Threads.get('me', thread.id);
-      if (!threadDetails || !threadDetails.messages) return;
+      if (!threadDetails || !threadDetails.messages) continue;
 
       const messages = threadDetails.messages;
-      
-      messages.forEach(message => {
-        if (!message.payload || !message.payload.headers) return;
+
+      for (const message of messages) {
+        if (!message.payload || !message.payload.headers) continue;
 
         const sender = getSenderFromHeaders(message.payload.headers);
-        
+
         if (sender) {
           const domain = extractDomain(sender);
-          
+
           if (domain) {
             const label = getOrCreateLabel(domain);
             Gmail.Users.Threads.modify({ addLabelIds: [label.id] }, 'me', thread.id);
-            
+
             const senderName = extractSenderName(sender);
             updateLastLabelAddedTime(userProperties);
             labelsAddedInCurrentIteration = true;
-            
+
             Logger.log(`Added label '${domain}' to thread ${thread.id} from '${senderName}'`);
-            return;
+            break; // label once per thread
           } else {
             console.log(`Could not extract domain from sender '${sender}' in thread: ${thread.id}`);
           }
         } else {
           console.log(`Skipped message in thread ${thread.id}: No 'From' header found.`);
         }
-      });
+      }
     } catch (e) {
       console.error(`Failed to process thread ${thread.id}. Error: ${e.toString()}`);
     }
-  });
-  
+  }
+
   return labelsAddedInCurrentIteration;
 }
 
