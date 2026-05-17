@@ -4,13 +4,6 @@ Requires Script Property GEMINI_API_KEY.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
-const CLASSIFIER_MODE_TRASH = 'should_trash';
-const CLASSIFIER_MODE_PINNED = 'pinned_check';
-const VERDICT_KEEP = 'keep';
-const VERDICT_TRASH = 'trash';
-const ACTOR_GMAIL = 'gmail';
-const ACTOR_LLM = 'llm';
-
 let _examplesCache;
 
 function classifyThreadsLLM(threads, mode) {
@@ -20,7 +13,7 @@ function classifyThreadsLLM(threads, mode) {
 function classifyFeatures(features, mode) {
   if (!features || features.length === 0) return [];
 
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  const apiKey = PropertiesService.getScriptProperties().getProperty(PROPS.GEMINI_API_KEY);
   if (!apiKey) {
     console.log('classifier: GEMINI_API_KEY not set, abstaining.');
     return null;
@@ -39,6 +32,15 @@ function classifyFeatures(features, mode) {
     if (batchResults) results.push.apply(results, batchResults);
   }
   return results;
+}
+
+// Wraps a default Gmail action so that shadow logging and Phase 3 LLM gating live in one place.
+// Today: log every classification (actor=gmail), then run applyFn on all threads.
+// Phase 3 (CLASSIFIER_SHADOW_MODE = false): filter threads by LLM verdict + CLASSIFIER_CONFIDENCE_THRESHOLD
+// before applyFn, and log gated threads with actor=ACTOR_LLM. This function is the single site to edit.
+function withClassifier(threads, mode, fnName, gmailVerdict, applyFn) {
+  logDecisions(threads, mode, fnName, gmailVerdict);
+  applyFn(threads);
 }
 
 function logDecisions(threads, mode, fnName, gmailVerdict) {

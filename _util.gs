@@ -57,6 +57,12 @@ function timeBudgetExceeded(startMs) {
   return Date.now() - startMs > EXECUTION_TIME_LIMIT_MS;
 }
 
+function getOrCreateUserLabel(name) {
+  let label = GmailApp.getUserLabelByName(name);
+  if (label == null) label = GmailApp.createLabel(name);
+  return label;
+}
+
 function extractThreadFeatures(thread, firstMessage) {
   return {
     id: thread.getId(),

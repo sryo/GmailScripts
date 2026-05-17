@@ -46,10 +46,9 @@ function replyToEmails() {
         const phrase = keywords[k][1];
 
         let matched = false;
-        if (keyword.indexOf("NOT ") >= 0) {
-          const notMatch = keyword.match(/NOT (.*)/);
-          const notTerm = notMatch ? notMatch[1] : null;
-          if (notTerm && plain.indexOf(notTerm) < 0) matched = true;
+        const notMatch = keyword.match(/^NOT\s+(.+)$/);
+        if (notMatch) {
+          if (plain.indexOf(notMatch[1]) < 0) matched = true;
         } else {
           const terms = keyword.split(" OR ");
           for (let t = 0; t < terms.length; t++) {

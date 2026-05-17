@@ -16,7 +16,9 @@ Personal Google Apps Script collection for keeping a Gmail inbox tidy.
 
 ## Classifier setup (one-time)
 
-1. Project Settings, Script Properties, add `GEMINI_API_KEY` ([get one](https://aistudio.google.com/app/apikey)).
-2. From the editor, run `harvestCorrections()` once to create the `GmailClassifier` spreadsheet and grant OAuth scopes.
-3. Open the spreadsheet from your Drive to watch Training and Shadow rows accumulate.
-4. The classifier abstains until ≥5 keep and ≥5 trash examples exist. Once warm, it logs disagreements to the `Shadow` tab without changing behavior. To act on its verdicts, flip `CLASSIFIER_SHADOW_MODE` to `false` in `_config.gs`.
+1. Add `GEMINI_API_KEY` to Script Properties ([get one](https://aistudio.google.com/app/apikey)).
+2. Run `install()` from the editor.
+3. Add a time trigger on `cleanUp` (~10-15 min interval).
+4. Flip `CLASSIFIER_SHADOW_MODE` to `false` in `_config.gs` when you want the LLM to act on its verdicts.
+
+The classifier abstains until ~5 keep and ~5 trash examples accumulate in `Training` from your salvage/discard behavior.

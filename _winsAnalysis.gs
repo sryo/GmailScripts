@@ -3,15 +3,6 @@ Joins Decisions × Training to score how often the LLM is validated by user beha
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
-const OUTCOME_PENDING = 'pending';
-const OUTCOME_BOTH_RIGHT = 'both_right';
-const OUTCOME_BOTH_WRONG = 'both_wrong';
-const OUTCOME_LLM_WON = 'llm_won';
-const OUTCOME_LLM_LOST = 'llm_lost';
-
-const WINS_COL_ACTOR = WINS_HEADERS.indexOf('actor');
-const WINS_COL_OUTCOME = WINS_HEADERS.indexOf('outcome');
-
 function computeWins() {
   const tabs = getClassifierTabs();
   if (tabs.decisions.getLastRow() < 2) return;
@@ -58,12 +49,14 @@ function computeOutcome_(gmailVerdict, llmVerdict, userVerdict) {
 }
 
 function summarizeOutcomes_(rows) {
+  const colActor = WINS_HEADERS.indexOf('actor');
+  const colOutcome = WINS_HEADERS.indexOf('outcome');
   const counts = {};
   let llmDriven = 0;
   rows.forEach(r => {
-    const outcome = r[WINS_COL_OUTCOME];
+    const outcome = r[colOutcome];
     counts[outcome] = (counts[outcome] || 0) + 1;
-    if (r[WINS_COL_ACTOR] === ACTOR_LLM) llmDriven++;
+    if (r[colActor] === ACTOR_LLM) llmDriven++;
   });
   counts.llm_driven_total = llmDriven;
   return counts;

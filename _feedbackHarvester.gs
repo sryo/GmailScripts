@@ -32,31 +32,43 @@ function trackPretrashedBatch(threadIds) {
 }
 
 function collectSalvaged_(pretrashedIndex, trainingRows, rowsToDelete) {
-  const salvagedThreads = [];
-  const salvagedRowIdxs = [];
+  const pretrashedNow = new Set();
+  GmailApp.search('label:' + LABEL_PRETRASH).forEach(t => pretrashedNow.add(t.getId()));
+  const pretrashedThenTrashed = new Set();
+  GmailApp.search('in:trash label:' + LABEL_PRETRASH).forEach(t => pretrashedThenTrashed.add(t.getId()));
+
+  const candidates = [];
   Object.keys(pretrashedIndex).forEach(threadId => {
     const rowIdx = pretrashedIndex[threadId];
+    if (pretrashedNow.has(threadId)) return;
+    if (pretrashedThenTrashed.has(threadId)) {
+      rowsToDelete[rowIdx] = true;
+      return;
+    }
+    candidates.push({ threadId, rowIdx });
+  });
+
+  const salvagedThreads = [];
+  const salvagedRowIdxs = [];
+  candidates.forEach(c => {
     try {
-      const thread = GmailApp.getThreadById(threadId);
+      const thread = GmailApp.getThreadById(c.threadId);
       if (!thread || thread.isInTrash()) {
-        rowsToDelete[rowIdx] = true;
-        return;
-      }
-      const labels = thread.getLabels().map(l => l.getName());
-      if (labels.indexOf(LABEL_PRETRASH) < 0) {
+        rowsToDelete[c.rowIdx] = true;
+      } else {
         salvagedThreads.push(thread);
-        salvagedRowIdxs.push(rowIdx);
+        salvagedRowIdxs.push(c.rowIdx);
       }
     } catch (e) {
-      console.log(`collectSalvaged: thread ${threadId} unreachable (${e.toString()}), dropping.`);
-      rowsToDelete[rowIdx] = true;
+      console.log(`collectSalvaged: thread ${c.threadId} unreachable (${e.toString()}), dropping.`);
+      rowsToDelete[c.rowIdx] = true;
     }
   });
 
   if (salvagedThreads.length === 0) return;
   const features = buildThreadFeatures(salvagedThreads);
   const now = new Date().toISOString();
-  features.forEach(f => trainingRows.push([now, f.id, f.sender, f.subject, f.snippet, 'keep', 'salvaged']));
+  features.forEach(f => trainingRows.push([now, f.id, f.sender, f.subject, f.snippet, VERDICT_KEEP, 'salvaged']));
   salvagedRowIdxs.forEach(idx => { rowsToDelete[idx] = true; });
 }
 
@@ -69,7 +81,7 @@ function collectUserDiscarded_(trackingSheet, seenIndex, trainingRows) {
   const now = new Date().toISOString();
   const newTrackingRows = [];
   features.forEach(f => {
-    trainingRows.push([now, f.id, f.sender, f.subject, f.snippet, 'trash', 'user_discarded']);
+    trainingRows.push([now, f.id, f.sender, f.subject, f.snippet, VERDICT_TRASH, 'user_discarded']);
     newTrackingRows.push([f.id, 'user_discarded', now]);
   });
   appendRowsBatch(trackingSheet, newTrackingRows);
@@ -87,7 +99,7 @@ function buildTrackingIndex_(trackingData) {
   const idx = { pretrashed: {}, user_discarded: {} };
   for (let i = 1; i < trackingData.length; i++) {
     const [threadId, type] = trackingData[i];
-    if (idx[type]) idx[type][threadId] = i + 1;
+    if (idx[type] && !idx[type][threadId]) idx[type][threadId] = i + 1;
   }
   return idx;
 }
