@@ -12,6 +12,8 @@ if (lastCleanedTime == null) {
 var cleanedInCurrentIteration = false; // keep track of whether labels were added in current iteration
 
 function cleanUp() {
+  try { harvestCorrections(); } catch (e) { console.log('harvestCorrections failed: ' + e.toString()); }
+  try { computeWins(); } catch (e) { console.log('computeWins failed: ' + e.toString()); }
   markDoneAsRead();
   markPinnedAsImportant();
   deleteOlder();
@@ -51,43 +53,36 @@ function markDoneAsRead() {
   }
 }
 
-// Set the label to use for threads that should be deleted after 30 days
-var labelName = '🗑️';
-
 function preTrashLowPriority() {
-  // Search for unimportant emails
-  var threads = GmailApp.search('-label:' + labelName + ' AND (label:low_priority OR label:promos OR category:updates) -is:important -label:pinned -label:snoozed -label:done');
+  var threads = GmailApp.search('-label:' + LABEL_PRETRASH + ' AND (label:low_priority OR label:promos OR category:updates) -is:important -label:pinned -label:snoozed -label:done');
   if (threads.length > 0) {
     Logger.log('🗑️ Found ' + threads.length + ' low priority threads.');
     cleanedInCurrentIteration = true;
     lastCleanedTime = new Date().toISOString();
 
-    // Get the label with the specified name, or create it if it does not exist
-    var label = GmailApp.getUserLabelByName(labelName);
-    if (label == null) {
-      label = GmailApp.createLabel(labelName);
-    }
+    logDecisions(threads, CLASSIFIER_MODE_TRASH, 'preTrashLowPriority', VERDICT_TRASH);
 
-    // Remove any existing labels from the threads
+    var label = GmailApp.getUserLabelByName(LABEL_PRETRASH);
+    if (label == null) label = GmailApp.createLabel(LABEL_PRETRASH);
+
     for (var i = 0; i < threads.length; i++) {
       var thread = threads[i];
-      var labels = thread.getLabels();
-      for (var j = 0; j < labels.length; j++) {
-        thread.removeLabel(labels[j]);
-      }
+      var existing = thread.getLabels();
+      for (var j = 0; j < existing.length; j++) thread.removeLabel(existing[j]);
     }
 
-    // Add the specified label to the threads and archive
+    var pretrashedIds = [];
     for (var i = 0; i < threads.length; i++) {
       threads[i].addLabel(label);
       threads[i].moveToArchive();
+      pretrashedIds.push(threads[i].getId());
     }
+    try { trackPretrashedBatch(pretrashedIds); } catch (e) { console.log('trackPretrashedBatch failed: ' + e.toString()); }
   }
 }
 
 function deleteOlder() {
-  // Search for emails that have the specified label and are more than 20 days old
-  var threads = GmailApp.search('label:' + labelName + ' older_than:20d');
+  var threads = GmailApp.search('label:' + LABEL_PRETRASH + ' older_than:20d');
   if (threads.length > 0) {
     Logger.log('🧹 Found ' + threads.length + ' threads to delete.');
     cleanedInCurrentIteration = true;
@@ -106,6 +101,8 @@ function markPinnedAsImportant() {
     Logger.log('⭐ Found ' + threads.length + ' important threads.');
     cleanedInCurrentIteration = true;
     lastCleanedTime = new Date().toISOString();
+
+    logDecisions(threads, CLASSIFIER_MODE_PINNED, 'markPinnedAsImportant', VERDICT_KEEP);
 
     // Mark the emails as important
     for (var i = 0; i < threads.length; i++) {
@@ -139,23 +136,12 @@ function removeEmptyLabels() {
   }
   offset = parseInt(offset);
 
-  if (labels.length > 0) {
-    var progress = "";
-    var percentage = Math.floor((offset + limit) / labels.length * 10);
-    for (var j = 0; j < percentage; j++) {
-      progress += "🟩";
-    }
-    for (var j = percentage; j < 10; j++) {
-      if (j + 1 == Math.floor((offset + limit * 2) / labels.length * 10)) {
-        progress += "🟦";
-      } else {
-        progress += "⬜";
-      }
-    }
-    progress += " Current Offset: " + offset + "/" + labels.length + ". Next:" + (offset + limit);
-    Logger.log(progress);
+  if (labels.length === 0) {
+    Logger.log("No labels to process.");
   } else {
-    Logger.log("The labels list is empty.");
+    var end = Math.min(offset + limit, labels.length);
+    var filled = Math.min(10, Math.round(end / labels.length * 10));
+    Logger.log('🟩'.repeat(filled) + '⬜'.repeat(10 - filled) + ' ' + offset + '-' + end + ' / ' + labels.length);
   }
 
   for (var i = offset; i < offset + limit && i < labels.length; i++) {

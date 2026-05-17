@@ -3,87 +3,75 @@
  * Author: Mateo Yadarola (teodalton@gmail.com)
  */
 
-const USER_PROPERTY_LAST_LABEL_TIME = 'lastLabelAddedTime';
-const MAX_RESULTS = 25;
-const LABEL_VISIBILITY = 'labelHide';
-
 function tagEmailsByDomain() {
+  const startMs = Date.now();
+  const labelMap = buildLabelMap();
   let pageToken;
-  const userProperties = PropertiesService.getUserProperties();
 
   do {
     try {
-      const threads = fetchThreads(pageToken);
-      if (!threads || !threads.threads || threads.threads.length === 0) {
-        console.log("No more threads to process or threads object is undefined.");
+      if (timeBudgetExceeded(startMs)) {
+        console.log('Time budget exceeded; will resume on next trigger.');
         break;
       }
-      
-      const labelsAddedInCurrentIteration = processThreads(threads.threads, userProperties);
-      
-      if (!labelsAddedInCurrentIteration) {
-        console.log(`No new labels were added in this run.`);
+      const threads = fetchThreads(pageToken);
+      if (!threads || !threads.threads || threads.threads.length === 0) {
+        console.log("No more threads to process.");
+        break;
       }
-      
+      const added = processThreads(threads.threads, labelMap);
+      if (!added) console.log(`No new labels were added in this run.`);
       pageToken = threads.nextPageToken;
     } catch (e) {
       console.error(`An error occurred during execution: ${e.toString()}`);
-      break; 
+      break;
     }
   } while (pageToken);
-  
+
   console.log("Script execution finished.");
 }
 
 function fetchThreads(pageToken) {
   return Gmail.Users.Threads.list('me', {
     q: 'has:nouserlabels',
-    maxResults: MAX_RESULTS,
+    maxResults: MAX_THREADS_TAG,
     pageToken: pageToken
   });
 }
 
-function processThreads(threads, userProperties) {
-  let labelsAddedInCurrentIteration = false;
-
+function processThreads(threads, labelMap) {
+  let added = false;
   for (const thread of threads) {
     try {
-      const threadDetails = Gmail.Users.Threads.get('me', thread.id);
+      const threadDetails = Gmail.Users.Threads.get('me', thread.id, {
+        format: 'metadata',
+        metadataHeaders: ['From']
+      });
       if (!threadDetails || !threadDetails.messages) continue;
 
-      const messages = threadDetails.messages;
-
-      for (const message of messages) {
+      for (const message of threadDetails.messages) {
         if (!message.payload || !message.payload.headers) continue;
-
         const sender = getSenderFromHeaders(message.payload.headers);
-
-        if (sender) {
-          const domain = extractDomain(sender);
-
-          if (domain) {
-            const label = getOrCreateLabel(domain);
-            Gmail.Users.Threads.modify({ addLabelIds: [label.id] }, 'me', thread.id);
-
-            const senderName = extractSenderName(sender);
-            updateLastLabelAddedTime(userProperties);
-            labelsAddedInCurrentIteration = true;
-
-            Logger.log(`Added label '${domain}' to thread ${thread.id} from '${senderName}'`);
-            break; // label once per thread
-          } else {
-            console.log(`Could not extract domain from sender '${sender}' in thread: ${thread.id}`);
-          }
-        } else {
+        if (!sender) {
           console.log(`Skipped message in thread ${thread.id}: No 'From' header found.`);
+          continue;
         }
+        const domain = extractDomain(sender);
+        if (!domain) {
+          console.log(`Could not extract domain from '${sender}' in thread: ${thread.id}`);
+          continue;
+        }
+        const label = getOrCreateLabelCached(labelMap, domain);
+        Gmail.Users.Threads.modify({ addLabelIds: [label.id] }, 'me', thread.id);
+        Logger.log(`Added label '${domain}' to thread ${thread.id} from '${extractSenderName(sender)}'`);
+        added = true;
+        break;
       }
     } catch (e) {
       console.error(`Failed to process thread ${thread.id}. Error: ${e.toString()}`);
     }
   }
-
-  return labelsAddedInCurrentIteration;
+  return added;
 }
 
 function getSenderFromHeaders(headers) {
@@ -99,35 +87,4 @@ function extractDomain(sender) {
 function extractSenderName(sender) {
   const match = sender.match(/^([^<]*)</);
   return match ? match[1].trim() : sender;
-}
-
-function getOrCreateLabel(domain) {
-  const existingLabels = Gmail.Users.Labels.list('me').labels;
-  const existingLabel = existingLabels.find(label => label.name.toLowerCase() === domain.toLowerCase());
-  
-  if (existingLabel) {
-    return existingLabel;
-  }
-  
-  const newLabel = {
-    name: domain,
-    labelListVisibility: LABEL_VISIBILITY,
-    messageListVisibility: 'show'
-  };
-  
-  return Gmail.Users.Labels.create(newLabel, 'me');
-}
-
-function getLastLabelAddedTime(userProperties) {
-  let lastLabelAddedTime = userProperties.getProperty(USER_PROPERTY_LAST_LABEL_TIME);
-  if (!lastLabelAddedTime) {
-    lastLabelAddedTime = new Date().toISOString();
-    userProperties.setProperty(USER_PROPERTY_LAST_LABEL_TIME, lastLabelAddedTime);
-  }
-  return new Date(lastLabelAddedTime);
-}
-
-function updateLastLabelAddedTime(userProperties) {
-  const now = new Date();
-  userProperties.setProperty(USER_PROPERTY_LAST_LABEL_TIME, now.toISOString());
 }

@@ -1,14 +1,10 @@
-const LABEL_NAME = '🌎';
-const MAX_THREADS = 100;
+/*
+Share Gmail threads labeled LABEL_PUBLIC as a web page.
+Author: Mateo Yadarola (teodalton@gmail.com)
 
-function escapeHtml(text) {
-  if (!text) return '';
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+Deployment: must be deployed as "Execute as: me" with access "Anyone with the link" at most.
+NEVER deploy as "Anyone, even anonymous"; that exposes every 🌎-labeled thread to the open internet.
+*/
 
 function getThreadsInLabel(labelName) {
   try {
@@ -18,14 +14,17 @@ function getThreadsInLabel(labelName) {
       return [];
     }
 
-    const threads = label.getThreads(0, MAX_THREADS);
-    return threads.map(thread => {
+    const threads = label.getThreads(0, MAX_THREADS_PUBLISH);
+    const messagesByThread = GmailApp.getMessagesForThreads(threads);
+
+    return threads.map((thread, idx) => {
       try {
+        const messages = messagesByThread[idx] || [];
         return {
           id: thread.getId(),
           subject: thread.getFirstMessageSubject() || '(No subject)',
           lastMessageDate: thread.getLastMessageDate().toISOString(),
-          messages: thread.getMessages().map(message => ({
+          messages: messages.map(message => ({
             id: message.getId(),
             subject: message.getSubject(),
             body: message.getBody(),
@@ -57,7 +56,7 @@ function writeThreadsToHtml(threadArray) {
             <span class="from">${escapeHtml(message.from)}</span>
             <span class="date">${new Date(message.date).toLocaleString()}</span>
           </div>
-          <div class="message-body">${message.body}</div>
+          <div class="message-body">${sanitizeEmailHtml(message.body)}</div>
         </div>
       `).join('')}
     </div>
@@ -116,7 +115,7 @@ function writeThreadsToHtml(threadArray) {
           function sortThreads(sortBy) {
             const threadContainer = document.getElementById('threadContainer');
             const threads = Array.from(threadContainer.children);
-            
+
             threads.sort((a, b) => {
               const aValue = a.getAttribute('data-' + sortBy);
               const bValue = b.getAttribute('data-' + sortBy);
@@ -126,7 +125,7 @@ function writeThreadsToHtml(threadArray) {
                 return aValue.localeCompare(bValue);
               }
             });
-            
+
             threads.forEach(thread => threadContainer.appendChild(thread));
           }
         </script>
@@ -147,16 +146,24 @@ function writeThreadsToHtml(threadArray) {
 }
 
 function publishPublicThreads() {
-  if (!GmailApp.getUserLabelByName(LABEL_NAME)) {
-    GmailApp.createLabel(LABEL_NAME);
+  if (!GmailApp.getUserLabelByName(LABEL_PUBLIC)) {
+    GmailApp.createLabel(LABEL_PUBLIC);
   }
 
-  const threads = getThreadsInLabel(LABEL_NAME);
-  const html = writeThreadsToHtml(threads);
+  const cache = CacheService.getScriptCache();
+  let html = cache.get('public_threads_html');
+  if (!html) {
+    const threads = getThreadsInLabel(LABEL_PUBLIC);
+    html = writeThreadsToHtml(threads);
+    try {
+      cache.put('public_threads_html', html, WEBAPP_CACHE_TTL_SEC);
+    } catch (e) {
+      console.log(`Skipped caching (likely >100KB): ${e.toString()}`);
+    }
+  }
 
   return HtmlService.createHtmlOutput(html)
     .setTitle("Public Threads")
-    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 

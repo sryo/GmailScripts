@@ -1,28 +1,22 @@
-## GmailScripts
-Google Apps Script that help you declutter your inbox.
+# GmailScripts
 
-# 🪄🧽 cleanUp.gs
+Personal Google Apps Script collection for keeping a Gmail inbox tidy.
 
-The Gmail Cleanup script schedules unimportant mails for deletion and performs general cleanup routines. It marks done emails as read, deletes older mails, archives inbox, and pre-trashes low priority emails. The script also ensures that important mails are marked as such, giving you complete control over your inbox. By automating the tedious task of cleaning up your inbox, you can focus on more important tasks and be more productive.
+## Scripts
+
+**`cleanUp.gs`**. Schedules low-priority mail for deletion, keeps pinned/important state consistent, and trains a Gemini Flash classifier (shadow mode) on what you actually salvage or discard so the rules improve over time. See **Classifier setup** below.
 
 ![mail2web](https://github.com/user-attachments/assets/b83c71bb-186f-4964-8fb7-c84c5c66315b)
-# email2Web.gs
-Share some Gmail threads with the world in an easily accessible URL. By using this script, users can make sure that their important threads are always available and accessible to others, no matter where they are.
 
-# 🗂️👤 tagEmailsByDomain.gs and labelBySender.gs
+**`email2Web.gs`**. Publishes Gmail threads labeled `🌎` as a web page. Deploy as "Execute as: me" with access "Anyone with the link" at most; never "Anyone, even anonymous."
 
-Having the ability to group emails from the same sender or domain can be very helpful in organizing your inbox and keeping it clutter-free. You can easily keep track of all emails from a specific company or team. This script will help you prioritize your emails and quickly identify which ones are important and need your attention.
+**`replyToEmails.gs`**. Drafts auto-replies to unread inbox threads when their body matches keywords listed in a spreadsheet.
 
-## FAQ
+**`tagEmailsByDomain.gs`**. Groups untagged threads under per-domain labels (Hey-style bundles).
 
-**Q:** What are these scripts for?
+## Classifier setup (one-time)
 
-**A:** These scripts are designed to help you keep your inbox tidy and organized. They can perform a variety of tasks, such as automatically moving emails to specific folders, deleting old messages, and more.
-
-**Q:** How do I use these scripts?
-
-**A:** To use these scripts, you'll need to be familiar with using Google Apps Scripts.
-
-**Q:** Are these scripts free to use?
-
-**A:** Yes, if you find these scripts useful and want to support their development, donations are accepted and encouraged. Any contributions you make will go towards supporting the continued development of these scripts and making them even better.
+1. Project Settings, Script Properties, add `GEMINI_API_KEY` ([get one](https://aistudio.google.com/app/apikey)).
+2. From the editor, run `harvestCorrections()` once to create the `GmailClassifier` spreadsheet and grant OAuth scopes.
+3. Open the spreadsheet from your Drive to watch Training and Shadow rows accumulate.
+4. The classifier abstains until ≥5 keep and ≥5 trash examples exist. Once warm, it logs disagreements to the `Shadow` tab without changing behavior. To act on its verdicts, flip `CLASSIFIER_SHADOW_MODE` to `false` in `_config.gs`.
