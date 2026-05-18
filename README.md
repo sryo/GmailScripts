@@ -1,4 +1,4 @@
-# GmailScripts
+# GmailTidy
 
 Personal Google Apps Script collection for keeping a Gmail inbox tidy.
 
