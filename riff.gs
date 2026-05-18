@@ -7,7 +7,7 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 function riff() {
   const tabs = getClassifierTabs();
   const drafted = buildTrackingIndex(tabs.tracking.getDataRange().getValues())[TRACKING_TYPE_DRAFTED];
-  const threads = GmailApp.search('label:' + LABEL_AUTOREPLY + ' -in:trash', 0, AUTOREPLY_BATCH_LIMIT);
+  const threads = GmailApp.search('label:"' + LABEL_AUTOREPLY + '" -in:trash', 0, AUTOREPLY_BATCH_LIMIT);
   if (threads.length === 0) return;
 
   const autoreply = GmailApp.getUserLabelByName(LABEL_AUTOREPLY);

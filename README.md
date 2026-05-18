@@ -25,7 +25,7 @@ If this approach resonates, check out [Posta](https://sryo.github.io/Posta/), my
 
 ![mail2web](https://github.com/user-attachments/assets/b83c71bb-186f-4964-8fb7-c84c5c66315b)
 
-**`email2Web.gs`**. Publishes Gmail threads labeled `🌎` as a web page. Deploy as "Execute as: me" with access "Anyone with the link" at most; never "Anyone, even anonymous."
+**`public.gs`**. Publishes Gmail threads labeled `🌎 Public` as a web page. Deploy as "Execute as: me" with access "Anyone with the link" at most; never "Anyone, even anonymous."
 
 **`riff.gs`**. Apply `🦾` to any thread to add some AI muscle. Riff uses recent sent emails labeled `🫵` to match your voice.
 

@@ -3,12 +3,12 @@ Shared constants.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
-const LABEL_AUTOREPLY = '🦾';
-const LABEL_PUBLIC = '🌎';
+const LABEL_AUTOREPLY = '🦾 Riff';
+const LABEL_PUBLIC = '🌎 Public';
 const LABEL_PRETRASH = '🗑️';
-const LABEL_PING = '↩️';
-const LABEL_STASH = '🪎';
-const LABEL_VOICE = '🫵';
+const LABEL_PING = '↩️ Ping';
+const LABEL_STASH = '🪎 Stash';
+const LABEL_VOICE = '🫵 Voice';
 
 // Labels removeEmptyLabels must never delete, even when empty.
 const PROTECTED_LABELS = [LABEL_AUTOREPLY, LABEL_PUBLIC, LABEL_PRETRASH, LABEL_PING, LABEL_STASH, LABEL_VOICE];
