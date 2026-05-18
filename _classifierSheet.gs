@@ -182,7 +182,6 @@ function addClassifierMenu() {
     .addItem('Bootstrap training', 'bootstrapTraining')
     .addItem('Clean legacy pretrash labels', 'cleanPretrashLegacyLabels')
     .addSeparator()
-    .addItem('Migrate labels (one-shot)', 'migrateLabels')
     .addItem('Re-run install', 'install')
     .addToUi();
 }
