@@ -29,7 +29,7 @@ function replyToEmails() {
   let label = GmailApp.getUserLabelByName(LABEL_AUTOREPLY);
   if (!label) label = GmailApp.createLabel(LABEL_AUTOREPLY);
 
-  const threads = GmailApp.search('is:unread in:inbox -label:' + LABEL_AUTOREPLY);
+  const threads = GmailApp.search('is:unread in:inbox -label:' + LABEL_AUTOREPLY + ' -label:' + LABEL_PRETRASH);
   for (let i = 0; i < threads.length; i++) {
     const thread = threads[i];
     const messages = thread.getMessages();

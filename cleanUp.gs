@@ -122,7 +122,20 @@ function preTrashLowPriority() {
 
   getOrCreateUserLabel(LABEL_PRETRASH).addToThreads(threads);
   GmailApp.moveThreadsToArchive(threads);
+  stripAllLabelsExcept(threads, [LABEL_PRETRASH]);
   try { trackPretrashedBatch(threads.map(t => t.getId())); } catch (e) { console.log('trackPretrashedBatch failed: ' + e.toString()); }
+}
+
+function cleanPretrashLegacyLabels() {
+  // One-shot, bucketed: enforce pretrash-only label on legacy pretrashed threads.
+  // Re-run until the log shows 0.
+  const threads = GmailApp.search('label:' + LABEL_PRETRASH, 0, MAX_THREADS_TAG);
+  if (threads.length === 0) {
+    Logger.log('No pretrashed threads with stale labels left.');
+    return;
+  }
+  Logger.log('Stripping all non-pretrash labels from ' + threads.length + ' pretrashed threads.');
+  stripAllLabelsExcept(threads, [LABEL_PRETRASH]);
 }
 
 function demoteFalseImportant() {

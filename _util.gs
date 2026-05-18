@@ -88,6 +88,17 @@ function deleteRowsReverse(sheet, rowNumbers) {
   for (let i = sorted.length - 1; i >= 0; i--) sheet.deleteRow(sorted[i]);
 }
 
+// Strips every user label except the ones in keepNames. Used when a thread's labels should be
+// reset to a known set (e.g., pretrash carries only 🗑️).
+function stripAllLabelsExcept(threads, keepNames) {
+  if (!threads || threads.length === 0) return;
+  threads.forEach(t => {
+    t.getLabels().forEach(l => {
+      if (!keepNames.includes(l.getName())) t.removeLabel(l);
+    });
+  });
+}
+
 // Composite cleanup applied whenever a thread is demoted from important (by user or by LLM):
 // drops domain bunch labels and the stash label, since both only belong on importants.
 function cleanDemotedThreads(threads, source) {
