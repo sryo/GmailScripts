@@ -87,3 +87,38 @@ function deleteRowsReverse(sheet, rowNumbers) {
   const sorted = rowNumbers.slice().sort((a, b) => a - b);
   for (let i = sorted.length - 1; i >= 0; i--) sheet.deleteRow(sorted[i]);
 }
+
+// Composite cleanup applied whenever a thread is demoted from important (by user or by LLM):
+// drops domain bunch labels and the stash label, since both only belong on importants.
+function cleanDemotedThreads(threads, source) {
+  if (!threads || threads.length === 0) return;
+  const n = stripBunchLabels(threads);
+  if (n > 0) Logger.log('🏷️ Stripped ' + n + ' bunch tags from ' + source + '.');
+  removeStashLabel(threads);
+}
+
+// Removes the Stash label from a batch of threads. Used when an attachment-bearing thread
+// loses importance, so 🪎 doesn't outlive the importance flag.
+function removeStashLabel(threads) {
+  if (!threads || threads.length === 0) return;
+  const stashLabel = GmailApp.getUserLabelByName(LABEL_STASH);
+  if (stashLabel) stashLabel.removeFromThreads(threads);
+}
+
+// Removes domain-style user labels (those produced by tagEmailsByDomain) from threads
+// that no longer belong in a bunch: typically threads just demoted from important.
+function stripBunchLabels(threads) {
+  if (!threads || threads.length === 0) return 0;
+  const domainPattern = /^[a-z0-9.-]+\.[a-z]{2,}$/i;
+  let stripped = 0;
+  threads.forEach(t => {
+    t.getLabels().forEach(l => {
+      const name = l.getName();
+      if (PROTECTED_LABELS.includes(name)) return;
+      if (!domainPattern.test(name)) return;
+      t.removeLabel(l);
+      stripped++;
+    });
+  });
+  return stripped;
+}

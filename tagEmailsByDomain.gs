@@ -33,7 +33,7 @@ function tagEmailsByDomain() {
 
 function fetchThreads(pageToken) {
   return Gmail.Users.Threads.list('me', {
-    q: 'has:nouserlabels',
+    q: 'is:important has:nouserlabels -label:low_priority -label:promos -category:updates -in:trash',
     maxResults: MAX_THREADS_TAG,
     pageToken: pageToken
   });

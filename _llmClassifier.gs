@@ -6,11 +6,7 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 
 let _examplesCache;
 
-function classifyThreadsLLM(threads, mode) {
-  return classifyFeatures(buildThreadFeatures(threads), mode);
-}
-
-function classifyFeatures(features, mode) {
+function classifyFeatures(features) {
   if (!features || features.length === 0) return [];
 
   const apiKey = PropertiesService.getScriptProperties().getProperty(PROPS.GEMINI_API_KEY);
@@ -28,43 +24,14 @@ function classifyFeatures(features, mode) {
   const results = [];
   for (let i = 0; i < features.length; i += CLASSIFIER_BATCH_SIZE) {
     const batch = features.slice(i, i + CLASSIFIER_BATCH_SIZE);
-    const batchResults = classifyBatch_(batch, examples, apiKey, mode);
+    const batchResults = classifyBatch_(batch, examples, apiKey);
     if (batchResults) results.push.apply(results, batchResults);
   }
   return results;
 }
 
-// Wraps a default Gmail action so that shadow logging and Phase 3 LLM gating live in one place.
-// Today: log every classification (actor=gmail), then run applyFn on all threads.
-// Phase 3 (CLASSIFIER_SHADOW_MODE = false): filter threads by LLM verdict + CLASSIFIER_CONFIDENCE_THRESHOLD
-// before applyFn, and log gated threads with actor=ACTOR_LLM. This function is the single site to edit.
-function withClassifier(threads, mode, fnName, gmailVerdict, applyFn) {
-  logDecisions(threads, mode, fnName, gmailVerdict);
-  applyFn(threads);
-}
-
-function logDecisions(threads, mode, fnName, gmailVerdict) {
-  if (!CLASSIFIER_SHADOW_MODE) return;
-  try {
-    const features = buildThreadFeatures(threads);
-    const results = classifyFeatures(features, mode);
-    if (!results) return;
-    const byId = {};
-    results.forEach(r => byId[r.id] = r);
-    const rows = [];
-    const now = new Date().toISOString();
-    features.forEach(f => {
-      const res = byId[f.id];
-      if (res) rows.push([now, f.id, f.sender, f.subject, fnName, gmailVerdict, res.verdict, res.confidence, ACTOR_GMAIL]);
-    });
-    appendRowsBatch(getClassifierTabs().decisions, rows);
-  } catch (e) {
-    console.log(`logDecisions (${fnName}): ${e.toString()}`);
-  }
-}
-
-function classifyBatch_(features, examples, apiKey, mode) {
-  const prompt = buildPrompt_(features, examples, mode);
+function classifyBatch_(features, examples, apiKey) {
+  const prompt = buildPrompt_(features, examples);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -94,10 +61,8 @@ function classifyBatch_(features, examples, apiKey, mode) {
   }
 }
 
-function buildPrompt_(features, examples, mode) {
-  const intent = mode === CLASSIFIER_MODE_PINNED
-    ? 'These emails are currently treated as important (pinned/snoozed). Decide if each should genuinely be kept ("keep") or actually trashed ("trash").'
-    : 'These emails are candidates for auto-deletion. Decide if each should genuinely be trashed ("trash") or actually kept ("keep").';
+function buildPrompt_(features, examples) {
+  const intent = 'These emails are currently flagged as important by Gmail. Decide if each should genuinely be kept ("keep") or actually trashed ("trash").';
 
   const keepLines = examples.keep.slice(0, CLASSIFIER_FEWSHOT_PER_CLASS)
     .map(e => `KEEP | From: ${e.sender} | Subject: ${e.subject} | ${e.snippet}`).join('\n');

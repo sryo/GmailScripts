@@ -6,6 +6,11 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 const LABEL_AUTOREPLY = '🤖';
 const LABEL_PUBLIC = '🌎';
 const LABEL_PRETRASH = '🗑️';
+const LABEL_PING = '↩️';
+const LABEL_STASH = '🪎';
+
+// Labels removeEmptyLabels must never delete, even when empty.
+const PROTECTED_LABELS = [LABEL_AUTOREPLY, LABEL_PUBLIC, LABEL_PRETRASH, LABEL_PING, LABEL_STASH];
 
 const MAX_THREADS_PUBLISH = 100;
 const MAX_THREADS_TAG = 25;
@@ -20,10 +25,17 @@ const CLASSIFIER_BATCH_SIZE = 20;
 const CLASSIFIER_CONFIDENCE_THRESHOLD = 0.7;
 const CLASSIFIER_SHADOW_MODE = true;
 const GEMINI_MODEL = 'gemini-2.5-flash';
-const HARVEST_LOOKBACK_DAYS = 20;
-
-const CLASSIFIER_MODE_TRASH = 'should_trash';
-const CLASSIFIER_MODE_PINNED = 'pinned_check';
+const PRETRASH_AGE_DAYS = 20;
+const ARCHIVE_INBOX_AGE_DAYS = 1;
+const PING_PICKUP_DAYS = 2;
+const PING_EXPIRE_DAYS = 4;
+const PROMOTE_LOOKBACK_DAYS = 14;
+const HARVEST_BATCH_LIMIT = 100;
+const BOOTSTRAP_SAMPLE_SIZE = 100;
+const CLASSIFIED_IMPORTANCE_TTL_DAYS = 7;
+const LLM_DEMOTED_TTL_DAYS = 30;
+const LLM_PROMOTED_TTL_DAYS = 30;
+const DECISIONS_TTL_DAYS = 60;
 
 const VERDICT_KEEP = 'keep';
 const VERDICT_TRASH = 'trash';
@@ -36,6 +48,19 @@ const OUTCOME_BOTH_RIGHT = 'both_right';
 const OUTCOME_BOTH_WRONG = 'both_wrong';
 const OUTCOME_LLM_WON = 'llm_won';
 const OUTCOME_LLM_LOST = 'llm_lost';
+
+const TRACKING_TYPE_PRETRASHED = 'pretrashed';
+const TRACKING_TYPE_IMPORTANT_SEEN = 'important_seen';
+const TRACKING_TYPE_CLASSIFIED_IMPORTANCE = 'classified_importance';
+const TRACKING_TYPE_LLM_DEMOTED = 'llm_demoted';
+const TRACKING_TYPE_UNIMPORTANT_SEEN = 'unimportant_seen';
+const TRACKING_TYPE_LLM_PROMOTED = 'llm_promoted';
+const TRACKING_TYPE_PINGED = 'pinged';
+
+const SOURCE_SALVAGED = 'salvaged';
+const SOURCE_DEMOTED_IMPORTANT = 'demoted_important';
+const SOURCE_PROMOTED_UNIMPORTANT = 'promoted_unimportant';
+const SOURCE_BOOTSTRAP = 'bootstrap';
 
 const SHEET_TAB_TRAINING = 'Training';
 const SHEET_TAB_TRACKING = 'Tracking';
@@ -53,3 +78,7 @@ const PROPS = {
   CLASSIFIER_SHEET_ID: 'CLASSIFIER_SHEET_ID',
   GEMINI_API_KEY: 'GEMINI_API_KEY'
 };
+
+const TRIGGER_CLEANUP_MIN = 5;
+const TRIGGER_TAG_DOMAIN_MIN = 1;
+const TRIGGER_REMOVE_EMPTY_LABELS_MIN = 30;
