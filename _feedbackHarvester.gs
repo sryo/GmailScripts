@@ -202,7 +202,8 @@ function buildTrackingIndex(trackingData) {
     [TRACKING_TYPE_CLASSIFIED_IMPORTANCE]: {},
     [TRACKING_TYPE_LLM_DEMOTED]: {},
     [TRACKING_TYPE_LLM_PROMOTED]: {},
-    [TRACKING_TYPE_PINGED]: {}
+    [TRACKING_TYPE_PINGED]: {},
+    [TRACKING_TYPE_DRAFTED]: {}
   };
   for (let i = 1; i < trackingData.length; i++) {
     const [threadId, type] = trackingData[i];

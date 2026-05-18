@@ -3,14 +3,15 @@ Shared constants.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
-const LABEL_AUTOREPLY = '🤖';
+const LABEL_AUTOREPLY = '🦾';
 const LABEL_PUBLIC = '🌎';
 const LABEL_PRETRASH = '🗑️';
 const LABEL_PING = '↩️';
 const LABEL_STASH = '🪎';
+const LABEL_VOICE = '🫵';
 
 // Labels removeEmptyLabels must never delete, even when empty.
-const PROTECTED_LABELS = [LABEL_AUTOREPLY, LABEL_PUBLIC, LABEL_PRETRASH, LABEL_PING, LABEL_STASH];
+const PROTECTED_LABELS = [LABEL_AUTOREPLY, LABEL_PUBLIC, LABEL_PRETRASH, LABEL_PING, LABEL_STASH, LABEL_VOICE];
 
 const MAX_THREADS_PUBLISH = 100;
 const MAX_THREADS_TAG = 25;
@@ -32,6 +33,12 @@ const PING_EXPIRE_DAYS = 4;
 const PROMOTE_LOOKBACK_DAYS = 14;
 const HARVEST_BATCH_LIMIT = 100;
 const BOOTSTRAP_SAMPLE_SIZE = 100;
+const AUTOREPLY_BATCH_LIMIT = 5;
+const AUTOREPLY_DRY_RUN = false;
+const VOICE_EXAMPLES_MAX = 5; // recommended; do not exceed 10 or prompt grows unwieldy
+const VOICE_EXAMPLE_BODY_CAP = 500;
+const REPLY_THREAD_MESSAGE_WINDOW = 5;
+const REPLY_MESSAGE_BODY_CAP = 4000;
 const CLASSIFIED_IMPORTANCE_TTL_DAYS = 7;
 const LLM_DEMOTED_TTL_DAYS = 30;
 const LLM_PROMOTED_TTL_DAYS = 30;
@@ -56,6 +63,7 @@ const TRACKING_TYPE_LLM_DEMOTED = 'llm_demoted';
 const TRACKING_TYPE_UNIMPORTANT_SEEN = 'unimportant_seen';
 const TRACKING_TYPE_LLM_PROMOTED = 'llm_promoted';
 const TRACKING_TYPE_PINGED = 'pinged';
+const TRACKING_TYPE_DRAFTED = 'drafted';
 
 const SOURCE_SALVAGED = 'salvaged';
 const SOURCE_DEMOTED_IMPORTANT = 'demoted_important';
@@ -80,5 +88,6 @@ const PROPS = {
 };
 
 const TRIGGER_CLEANUP_MIN = 5;
-const TRIGGER_TAG_DOMAIN_MIN = 1;
+const TRIGGER_BUNCH_MIN = 1;
 const TRIGGER_REMOVE_EMPTY_LABELS_MIN = 30;
+const MENU_HANDLER = 'addClassifierMenu';

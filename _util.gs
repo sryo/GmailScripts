@@ -88,6 +88,38 @@ function deleteRowsReverse(sheet, rowNumbers) {
   for (let i = sorted.length - 1; i >= 0; i--) sheet.deleteRow(sorted[i]);
 }
 
+// Shared Gemini call. Returns parsed response JSON object, or null on any failure.
+// opts = { temperature = 0, logPrefix = 'gemini' }
+function callGemini_(prompt, apiKey, opts) {
+  opts = opts || {};
+  const temperature = opts.temperature !== undefined ? opts.temperature : 0;
+  const logPrefix = opts.logPrefix || 'gemini';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const payload = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature, responseMimeType: 'application/json' }
+  };
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    const code = response.getResponseCode();
+    if (code !== 200) {
+      console.log(`${logPrefix}: API ${code}: ${response.getContentText().substring(0, 200)}`);
+      return null;
+    }
+    const text = JSON.parse(response.getContentText()).candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return null;
+    return JSON.parse(text);
+  } catch (e) {
+    console.log(`${logPrefix}: ${e.toString()}`);
+    return null;
+  }
+}
+
 // Strips every user label except the ones in keepNames. Used when a thread's labels should be
 // reset to a known set (e.g., pretrash carries only 🗑️).
 function stripAllLabelsExcept(threads, keepNames) {
@@ -116,7 +148,7 @@ function removeStashLabel(threads) {
   if (stashLabel) stashLabel.removeFromThreads(threads);
 }
 
-// Removes domain-style user labels (those produced by tagEmailsByDomain) from threads
+// Removes domain-style user labels (those produced by bunch) from threads
 // that no longer belong in a bunch: typically threads just demoted from important.
 function stripBunchLabels(threads) {
   if (!threads || threads.length === 0) return 0;

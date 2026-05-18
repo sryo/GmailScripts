@@ -24,21 +24,23 @@ self-running system, not an admin task.
 
 ## Triggers
 - `cleanUp`: every 5 min.
-- `tagEmailsByDomain`: every 1 min.
+- `bunch`: every 1 min.
 - `removeEmptyLabels`: every 30 min.
 
 `ping`, `stash`, `archive*` etc. run inside `cleanUp()`. No separate trigger.
 
 ## User assumptions
 The user expresses intent through Gmail's importance flag and the script-managed
-labels. Only four manual gestures:
+labels. Six manual gestures:
 - Mark **important** = "I want to see this."
 - Mark **unimportant** = "I don't care."
 - Remove **🗑️** = salvage; the thread should be kept (becomes a KEEP training row).
+- Apply **↩️** = reply later; thread returns to Hot and is tracked like an auto-ping.
 - Remove **↩️** = dismiss a ping; the thread should be archived.
+- Apply **🦾** = draft me a reply via LLM. Stays on the thread until the draft is sent or deleted.
 
-Everything else is automatic. The user does not maintain labels by hand,
-edit the spreadsheet, or run cleanup manually.
+One-time setup, optional but recommended: label a handful of your sent emails
+with **🫵** so the drafter has voice examples to mimic.
 
 ## Contracts
 - Gmail's `is:important` flag is the single source of truth; everything else cascades from it.
@@ -48,8 +50,12 @@ edit the spreadsheet, or run cleanup manually.
 - Stash requires `is:important has:attachment`. Demote strips Stash.
 - Bunch only labels importants. Demote strips bunch labels (domain pattern).
 - Ping is one-shot per thread. Tracking row is permanent.
+- Manually applied ↩️ is treated like an auto-ping (moved to inbox, tracked).
+- If ↩️ is applied to a pretrashed thread (🗑️), the 🗑️ is stripped (salvage override).
 - Script archives a thread when its ↩️ label is removed.
 - Stale pings (older than PING_EXPIRE_DAYS) archive passively.
+- Script drafts a reply on 🦾-labeled threads using up to VOICE_EXAMPLES_MAX sent emails labeled 🫵 as few-shot.
+- The 🦾 label stays until the draft is sent or deleted by the user; only then does the script remove it.
 - A pretrashed thread (🗑️) carries no other labels; entry points strip them.
 
 ## Self-bias prevention

@@ -31,34 +31,8 @@ function classifyFeatures(features) {
 }
 
 function classifyBatch_(features, examples, apiKey) {
-  const prompt = buildPrompt_(features, examples);
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-  const payload = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0, responseMimeType: 'application/json' }
-  };
-
-  try {
-    const response = UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    });
-    const code = response.getResponseCode();
-    if (code !== 200) {
-      console.log(`classifier: API ${code}: ${response.getContentText().substring(0, 200)}`);
-      return null;
-    }
-    const body = JSON.parse(response.getContentText());
-    const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return null;
-    const parsed = JSON.parse(text);
-    return parsed.results || [];
-  } catch (e) {
-    console.log(`classifier: error ${e.toString()}`);
-    return null;
-  }
+  const result = callGemini_(buildPrompt_(features, examples), apiKey, { logPrefix: 'classifier' });
+  return result ? (result.results || []) : null;
 }
 
 function buildPrompt_(features, examples) {

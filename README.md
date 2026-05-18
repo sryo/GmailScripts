@@ -27,9 +27,9 @@ If this approach resonates, check out [Posta](https://sryo.github.io/Posta/), my
 
 **`email2Web.gs`**. Publishes Gmail threads labeled `🌎` as a web page. Deploy as "Execute as: me" with access "Anyone with the link" at most; never "Anyone, even anonymous."
 
-**`replyToEmails.gs`**. Drafts auto-replies to unread inbox threads when their body matches keywords listed in a spreadsheet.
+**`riff.gs`**. Apply `🦾` to any thread to add some AI muscle. Riff uses recent sent emails labeled `🫵` to match your voice.
 
-**`tagEmailsByDomain.gs`**. Groups untagged threads under per-domain labels (Hey-style bundles).
+**`bunch.gs`**. Groups important untagged threads under per-domain labels.
 
 ## Classifier setup (one-time)
 

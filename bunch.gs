@@ -1,9 +1,10 @@
-/**
- * Script that groups emails by domain, similar to Hey bundles.
- * Author: Mateo Yadarola (teodalton@gmail.com)
- */
+/*
+Bunch: groups important threads by sender domain so all conversations with a
+sender land under one label, Hey-style.
+Author: Mateo Yadarola (teodalton@gmail.com)
+*/
 
-function tagEmailsByDomain() {
+function bunch() {
   const startMs = Date.now();
   const labelMap = buildLabelMap();
   let pageToken;

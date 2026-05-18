@@ -114,6 +114,7 @@ function install() {
   } catch (e) {
     Logger.log(`⚠ Gmail Advanced Service not enabled (${e.toString()}). Project Settings → Services → add Gmail API.`);
   }
+  ensureLabels_();
   ensureTriggers_();
   ensureMenuTrigger_();
   Logger.log(`Classifier shadow mode: ${CLASSIFIER_SHADOW_MODE ? 'ON (logging only)' : 'OFF (LLM gates decisions)'}`);
@@ -188,23 +189,40 @@ function addClassifierMenu() {
 function ensureMenuTrigger_() {
   const ssId = getOrCreateClassifierSheet().getId();
   const exists = ScriptApp.getProjectTriggers().some(t =>
-    t.getHandlerFunction() === 'addClassifierMenu' && t.getTriggerSourceId() === ssId
+    t.getHandlerFunction() === MENU_HANDLER && t.getTriggerSourceId() === ssId
   );
   if (exists) {
     Logger.log('✓ menu trigger already exists');
     return;
   }
-  ScriptApp.newTrigger('addClassifierMenu').forSpreadsheet(ssId).onOpen().create();
+  ScriptApp.newTrigger(MENU_HANDLER).forSpreadsheet(ssId).onOpen().create();
   Logger.log('+ menu trigger installed');
+}
+
+function ensureLabels_() {
+  PROTECTED_LABELS.forEach(name => getOrCreateUserLabel(name));
+  Logger.log('✓ labels available: ' + PROTECTED_LABELS.join(' '));
 }
 
 function ensureTriggers_() {
   const wanted = [
     { fn: 'cleanUp',            minutes: TRIGGER_CLEANUP_MIN },
-    { fn: 'tagEmailsByDomain',  minutes: TRIGGER_TAG_DOMAIN_MIN },
+    { fn: 'bunch',              minutes: TRIGGER_BUNCH_MIN },
     { fn: 'removeEmptyLabels',  minutes: TRIGGER_REMOVE_EMPTY_LABELS_MIN }
   ];
-  const existing = new Set(ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction()));
+  const wantedNames = new Set(wanted.map(w => w.fn));
+  // Single pass: drop orphan triggers left over from renames, collect survivors.
+  const existing = new Set();
+  ScriptApp.getProjectTriggers().forEach(t => {
+    const fn = t.getHandlerFunction();
+    if (fn === MENU_HANDLER) { existing.add(fn); return; }
+    if (wantedNames.has(fn)) {
+      existing.add(fn);
+    } else {
+      ScriptApp.deleteTrigger(t);
+      Logger.log(`- removed orphan trigger for ${fn}`);
+    }
+  });
   wanted.forEach(w => {
     if (existing.has(w.fn)) {
       Logger.log(`✓ trigger for ${w.fn} already exists`);
