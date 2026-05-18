@@ -115,6 +115,7 @@ function install() {
     Logger.log(`⚠ Gmail Advanced Service not enabled (${e.toString()}). Project Settings → Services → add Gmail API.`);
   }
   ensureTriggers_();
+  ensureMenuTrigger_();
   Logger.log(`Classifier shadow mode: ${CLASSIFIER_SHADOW_MODE ? 'ON (logging only)' : 'OFF (LLM gates decisions)'}`);
   Logger.log('--- install complete ---');
 }
@@ -169,6 +170,32 @@ function diagnose() {
 
   Logger.log('Shadow mode: ' + (CLASSIFIER_SHADOW_MODE ? 'ON (logs only)' : 'OFF (LLM acts)'));
   Logger.log('--- diagnose complete ---');
+}
+
+function addClassifierMenu() {
+  SpreadsheetApp.getUi()
+    .createMenu('GmailClassifier')
+    .addItem('Diagnose', 'diagnose')
+    .addItem('Run cleanUp now', 'cleanUp')
+    .addSeparator()
+    .addItem('Bootstrap training', 'bootstrapTraining')
+    .addItem('Clean legacy pretrash labels', 'cleanPretrashLegacyLabels')
+    .addSeparator()
+    .addItem('Re-run install', 'install')
+    .addToUi();
+}
+
+function ensureMenuTrigger_() {
+  const ssId = getOrCreateClassifierSheet().getId();
+  const exists = ScriptApp.getProjectTriggers().some(t =>
+    t.getHandlerFunction() === 'addClassifierMenu' && t.getTriggerSourceId() === ssId
+  );
+  if (exists) {
+    Logger.log('✓ menu trigger already exists');
+    return;
+  }
+  ScriptApp.newTrigger('addClassifierMenu').forSpreadsheet(ssId).onOpen().create();
+  Logger.log('+ menu trigger installed');
 }
 
 function ensureTriggers_() {
