@@ -40,7 +40,7 @@ function markCleaned_() {
 }
 
 function archiveInbox() {
-  const threads = GmailApp.search('label:inbox is:read older_than:' + ARCHIVE_INBOX_AGE_DAYS + 'd -label:pinned -label:snoozed -label:"' + LABEL_PING + '"');
+  const threads = GmailApp.search('label:inbox is:read older_than:' + ARCHIVE_INBOX_AGE_DAYS + 'd -label:pinned -label:snoozed -label:"' + LABEL_PING + '" -label:"' + LABEL_AUTOREPLY + '"');
   if (threads.length === 0) return;
   Logger.log('📦 Archiving ' + threads.length + ' read threads.');
   markCleaned_();

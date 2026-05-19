@@ -1,5 +1,6 @@
 /*
 Gemini Flash classifier and shadow-mode logger.
+Requires Script Property GEMINI_API_KEY.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
@@ -7,6 +8,12 @@ let _examplesCache;
 
 function classifyFeatures(features) {
   if (!features || features.length === 0) return [];
+
+  const apiKey = PropertiesService.getScriptProperties().getProperty(PROPS.GEMINI_API_KEY);
+  if (!apiKey) {
+    console.log('classifier: GEMINI_API_KEY not set, abstaining.');
+    return null;
+  }
 
   const examples = loadFewShotExamples_();
   if (examples.keep.length < CLASSIFIER_MIN_EXAMPLES_PER_CLASS || examples.trash.length < CLASSIFIER_MIN_EXAMPLES_PER_CLASS) {
@@ -17,14 +24,14 @@ function classifyFeatures(features) {
   const results = [];
   for (let i = 0; i < features.length; i += CLASSIFIER_BATCH_SIZE) {
     const batch = features.slice(i, i + CLASSIFIER_BATCH_SIZE);
-    const batchResults = classifyBatch_(batch, examples);
+    const batchResults = classifyBatch_(batch, examples, apiKey);
     if (batchResults) results.push.apply(results, batchResults);
   }
   return results;
 }
 
-function classifyBatch_(features, examples) {
-  const result = callGemini_(buildPrompt_(features, examples), { logPrefix: 'classifier' });
+function classifyBatch_(features, examples, apiKey) {
+  const result = callGemini_(buildPrompt_(features, examples), apiKey, { logPrefix: 'classifier' });
   return result ? (result.results || []) : null;
 }
 

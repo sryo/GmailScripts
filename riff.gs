@@ -6,7 +6,8 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 
 function riff() {
   const tabs = getClassifierTabs();
-  const drafted = buildTrackingIndex(tabs.tracking.getDataRange().getValues())[TRACKING_TYPE_DRAFTED];
+  const trackingValues = tabs.tracking.getDataRange().getValues();
+  const drafted = buildTrackingIndex(trackingValues)[TRACKING_TYPE_DRAFTED];
   const threads = GmailApp.search('label:"' + LABEL_AUTOREPLY + '" -in:trash', 0, AUTOREPLY_BATCH_LIMIT);
   if (threads.length === 0) return;
 
@@ -17,6 +18,7 @@ function riff() {
   // Computed once per batch; reused across all drafted threads.
   const userEmail = Gmail.Users.getProfile('me').emailAddress;
   const voiceExamples = loadVoiceExamples_(userEmail);
+  if (voiceExamples.length > 0) Logger.log('🫵 Voicing with ' + voiceExamples.length + ' samples.');
 
   threads.forEach(t => {
     try {
@@ -24,11 +26,16 @@ function riff() {
       const wasDrafted = !!drafted[threadId];
       const hasDraft = draftedThreadIds.has(threadId);
 
-      // Tracked and the draft is gone (sent or deleted): lifecycle complete, remove 🦾.
+      // Tracked and the draft is gone: sent (remove 🦾) or discarded (keep 🦾, will redraft).
       if (wasDrafted && !hasDraft) {
-        autoreply.removeFromThreads([t]);
+        const draftedAt = trackingValues[drafted[threadId] - 1][2];
         rowsToDelete[drafted[threadId]] = true;
-        Logger.log(LABEL_AUTOREPLY + ' Draft completed on ' + threadId + ', removing label.');
+        if (wasReplySentAfter_(t, userEmail, draftedAt)) {
+          autoreply.removeFromThreads([t]);
+          Logger.log('🦾 Riff sent for ' + threadId + '.');
+        } else {
+          Logger.log('🦾 Riff discarded on ' + threadId + ', will redraft.');
+        }
         return;
       }
 
@@ -42,18 +49,20 @@ function riff() {
       const result = generateReplyDraft(t, voiceExamples, userEmail);
       if (!result) return; // abstain on API failure, retry next tick
       if (!result.draft) {
-        Logger.log(LABEL_AUTOREPLY + ' Skipping ' + threadId + ' (' + (result.notes || 'no draft returned') + ').');
+        Logger.log('🦾 Riff skipped ' + threadId + ' (' + (result.notes || 'no draft returned') + ').');
         autoreply.removeFromThreads([t]);
         return;
       }
 
       if (AUTOREPLY_DRY_RUN) {
-        Logger.log(LABEL_AUTOREPLY + ' [DRY RUN] would draft for ' + threadId + ':\n' + result.draft);
+        Logger.log('🦾 [DRY RUN] would draft for ' + threadId + ':\n' + result.draft);
       } else {
         t.createDraftReply(result.draft);
+        t.moveToInbox();
+        t.markUnread();
       }
       recordTrackingRows([threadId], TRACKING_TYPE_DRAFTED);
-      Logger.log(LABEL_AUTOREPLY + ' Drafted reply for ' + threadId + '.');
+      Logger.log('🦾 Riffing reply for ' + threadId + '.');
     } catch (e) {
       console.log('riff ' + t.getId() + ': ' + e.toString());
     }
@@ -69,4 +78,12 @@ function buildDraftThreadIdSet_() {
     try { set.add(d.getMessage().getThread().getId()); } catch (e) { /* dangling draft */ }
   });
   return set;
+}
+
+function wasReplySentAfter_(thread, userEmail, sinceTimestamp) {
+  const since = new Date(sinceTimestamp);
+  const lower = userEmail.toLowerCase();
+  return thread.getMessages().some(m =>
+    m.getFrom().toLowerCase().includes(lower) && m.getDate() > since
+  );
 }

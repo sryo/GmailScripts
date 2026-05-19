@@ -96,11 +96,11 @@ function deleteRowsReverse(sheet, rowNumbers) {
 
 // Shared Gemini call. Returns parsed response JSON object, or null on any failure.
 // opts = { temperature = 0, logPrefix = 'gemini' }
-function callGemini_(prompt, opts) {
+function callGemini_(prompt, apiKey, opts) {
   opts = opts || {};
   const temperature = opts.temperature !== undefined ? opts.temperature : 0;
   const logPrefix = opts.logPrefix || 'gemini';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { temperature, responseMimeType: 'application/json' }
@@ -109,7 +109,6 @@ function callGemini_(prompt, opts) {
     const response = UrlFetchApp.fetch(url, {
       method: 'post',
       contentType: 'application/json',
-      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
       payload: JSON.stringify(payload),
       muteHttpExceptions: true
     });

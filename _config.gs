@@ -45,7 +45,7 @@ const CLASSIFIER_FEWSHOT_PER_CLASS = 10;
 const CLASSIFIER_BATCH_SIZE = 20;
 const CLASSIFIER_CONFIDENCE_THRESHOLD = 0.7;
 const CLASSIFIER_SHADOW_MODE = true;
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.5-flash';
 const PRETRASH_AGE_DAYS = 20;
 const ARCHIVE_INBOX_AGE_DAYS = 1;
 const PING_PICKUP_DAYS = 2;
@@ -55,8 +55,8 @@ const HARVEST_BATCH_LIMIT = 100;
 const BOOTSTRAP_SAMPLE_SIZE = 100;
 const AUTOREPLY_BATCH_LIMIT = 5;
 const AUTOREPLY_DRY_RUN = false;
-const VOICE_EXAMPLES_MAX = 5; // recommended; do not exceed 10 or prompt grows unwieldy
-const VOICE_EXAMPLE_BODY_CAP = 500;
+const VOICE_EXAMPLES_MAX = 10; // recommended; do not exceed 10 or prompt grows unwieldy
+const VOICE_EXAMPLE_BODY_CAP = 1000;
 const REPLY_THREAD_MESSAGE_WINDOW = 5;
 const REPLY_MESSAGE_BODY_CAP = 4000;
 const CLASSIFIED_IMPORTANCE_TTL_DAYS = 7;
@@ -103,10 +103,44 @@ const WINS_HEADERS = ['computedAt', 'threadId', 'sender', 'subject', 'function',
 const PROPS = {
   LAST_CLEANED_TIME: 'lastCleanedTime',
   OFFSET: 'offset',
-  CLASSIFIER_SHEET_ID: 'CLASSIFIER_SHEET_ID'
+  CLASSIFIER_SHEET_ID: 'CLASSIFIER_SHEET_ID',
+  GEMINI_API_KEY: 'GEMINI_API_KEY'
 };
 
 const TRIGGER_CLEANUP_MIN = 5;
 const TRIGGER_BUNCH_MIN = 1;
 const TRIGGER_REMOVE_EMPTY_LABELS_MIN = 30;
 const MENU_HANDLER = 'addClassifierMenu';
+
+const REPLY_PROMPT = (ctx, voiceBlock, messagesBlock) => `You draft a concise email reply on behalf of ${ctx.userEmail}.
+
+User's voice — these threads contain (a) writing samples to mimic for style, (b) any writing principles to follow as rules, and (c) biographical facts (CV, current role, history) you can use as known facts about the user:
+---
+${voiceBlock}
+---
+
+Rules:
+- Detect the language of the most recent incoming message NOT from ${ctx.userEmail}; reply in THAT language. This OVERRIDES the voice samples, which may be in a different language — translate the voice's style into the reply's language, do not copy the voice samples' language.
+- Reply as ${ctx.userEmail} to the most recent message NOT from that address.
+- Match the register of the incoming message (formal vs. casual, terse vs. expansive).
+- For style (word choice, sentence rhythm, openings, sign-offs): mimic the voice samples above when provided; otherwise default to plain, direct, conversational — no filler openings ("Hope you're well"), no corporate stiffness.
+- Under 120 words unless the thread clearly demands more.
+- Do NOT include a subject line, greeting boilerplate, or signature (Gmail adds the signature).
+- Treat biographical facts in the voice samples (CV, current role, skills, history) as true facts about the user that can be referenced in drafts.
+- Don't invent specific facts beyond what's in the thread or voice samples.
+- Read the thread to judge the response: engage positively with opportunities that align with the user's CV (e.g., job offers matching their background), decline misaligned pitches politely, defer when only the user can answer (e.g., scheduling).
+- Return draft:"" only as a last resort (e.g., the message is empty or nonsensical).
+
+Edge cases (return draft:"" with a notes line explaining):
+- Thread has no message from anyone other than ${ctx.userEmail}.
+- The most recent message is already from ${ctx.userEmail} (user already replied).
+
+Thread subject: ${ctx.subject}
+
+Messages (oldest first, quoted history removed):
+---
+${messagesBlock}
+---
+
+Respond with JSON only:
+{"detectedLanguage": "ISO 639-1 code of the most recent incoming message, e.g., 'en', 'es', 'fr'", "draft": "string", "confidence": 0.0-1.0, "notes": "string or empty"}`;

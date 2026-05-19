@@ -5,9 +5,14 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
 function generateReplyDraft(thread, voiceExamples, userEmail) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty(PROPS.GEMINI_API_KEY);
+  if (!apiKey) {
+    console.log('drafter: GEMINI_API_KEY not set, abstaining.');
+    return null;
+  }
   const ctx = buildReplyContext_(thread, voiceExamples, userEmail);
   if (!ctx) return null;
-  const result = callGemini_(buildReplyPrompt_(ctx), { temperature: 0.3, logPrefix: 'drafter' });
+  const result = callGemini_(buildReplyPrompt_(ctx), apiKey, { temperature: 0.3, logPrefix: 'drafter' });
   if (!result) return null;
   return { draft: result.draft || '', notes: result.notes || '', confidence: Number(result.confidence) || 0 };
 }
@@ -54,35 +59,6 @@ function buildReplyPrompt_(ctx) {
   const voiceBlock = ctx.voiceExamples.length === 0
     ? '(none specified)'
     : ctx.voiceExamples.map(e => `Subject: ${e.subject}\n${e.body}`).join('\n---\n');
-
   const messagesBlock = ctx.messages.map(m => `From: ${m.from}  (${m.date})\n${m.body}`).join('\n---\n');
-
-  return `You draft a concise email reply on behalf of ${ctx.userEmail}.
-
-Examples of how the user writes:
----
-${voiceBlock}
----
-
-Rules:
-- Reply as ${ctx.userEmail} to the most recent message NOT from that address.
-- Match the register of the incoming message. Default: plain, direct, conversational. No filler openings (no "Hope you're well"), no corporate stiffness.
-- Reply in the same language as the most recent incoming message.
-- Under 120 words unless the thread clearly demands more.
-- Do NOT include a subject line, greeting boilerplate, or signature (Gmail adds the signature).
-- If you must assume a fact the user hasn't stated, make a reasonable assumption and flag it in "notes".
-
-Edge cases (return draft:"" with a notes line explaining):
-- Thread has no message from anyone other than ${ctx.userEmail}.
-- The most recent message is already from ${ctx.userEmail} (user already replied).
-
-Thread subject: ${ctx.subject}
-
-Messages (oldest first, quoted history removed):
----
-${messagesBlock}
----
-
-Respond with JSON only:
-{"draft": "string", "confidence": 0.0-1.0, "notes": "string or empty"}`;
+  return REPLY_PROMPT(ctx, voiceBlock, messagesBlock);
 }
