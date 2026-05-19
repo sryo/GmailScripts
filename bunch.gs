@@ -4,6 +4,9 @@ sender land under one label, Hey-style.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
+const SENDER_HEADER_FALLBACKS = ['From', 'Sender', 'Reply-To', 'Return-Path'];
+const FALLBACK_SENDER_DOMAIN = 'unknown.sender';
+
 function bunch() {
   const startMs = Date.now();
   const labelMap = buildLabelMap();
@@ -46,17 +49,15 @@ function processThreads(threads, labelMap) {
     try {
       const threadDetails = Gmail.Users.Threads.get('me', thread.id, {
         format: 'metadata',
-        metadataHeaders: ['From']
+        metadataHeaders: SENDER_HEADER_FALLBACKS
       });
       if (!threadDetails || !threadDetails.messages) continue;
 
+      let labeled = false;
       for (const message of threadDetails.messages) {
         if (!message.payload || !message.payload.headers) continue;
         const sender = getSenderFromHeaders(message.payload.headers);
-        if (!sender) {
-          console.log(`Skipped message in thread ${thread.id}: No 'From' header found.`);
-          continue;
-        }
+        if (!sender) continue;
         const domain = extractDomain(sender);
         if (!domain) {
           console.log(`Could not extract domain from '${sender}' in thread: ${thread.id}`);
@@ -65,8 +66,17 @@ function processThreads(threads, labelMap) {
         const label = getOrCreateLabelCached(labelMap, domain);
         Gmail.Users.Threads.modify({ addLabelIds: [label.id] }, 'me', thread.id);
         Logger.log(`Added label '${domain}' to thread ${thread.id} from '${extractSenderName(sender)}'`);
+        labeled = true;
         added = true;
         break;
+      }
+
+      // Fallback so senderless threads stop re-matching has:nouserlabels every trigger.
+      if (!labeled) {
+        const label = getOrCreateLabelCached(labelMap, FALLBACK_SENDER_DOMAIN);
+        Gmail.Users.Threads.modify({ addLabelIds: [label.id] }, 'me', thread.id);
+        Logger.log(`Fallback-labeled thread ${thread.id} as '${FALLBACK_SENDER_DOMAIN}' (no usable sender header).`);
+        added = true;
       }
     } catch (e) {
       console.error(`Failed to process thread ${thread.id}. Error: ${e.toString()}`);
@@ -76,8 +86,11 @@ function processThreads(threads, labelMap) {
 }
 
 function getSenderFromHeaders(headers) {
-  const fromHeader = headers.find(header => header.name === 'From');
-  return fromHeader ? fromHeader.value : null;
+  for (const name of SENDER_HEADER_FALLBACKS) {
+    const h = headers.find(header => header.name === name);
+    if (h && h.value) return h.value;
+  }
+  return null;
 }
 
 function extractDomain(sender) {
