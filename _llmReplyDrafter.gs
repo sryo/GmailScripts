@@ -5,14 +5,9 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
 function generateReplyDraft(thread, voiceExamples, userEmail) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty(PROPS.GEMINI_API_KEY);
-  if (!apiKey) {
-    console.log('drafter: GEMINI_API_KEY not set, abstaining.');
-    return null;
-  }
   const ctx = buildReplyContext_(thread, voiceExamples, userEmail);
   if (!ctx) return null;
-  const result = callGemini_(buildReplyPrompt_(ctx), apiKey, { temperature: 0.3, logPrefix: 'drafter' });
+  const result = callGemini_(buildReplyPrompt_(ctx), { temperature: 0.3, logPrefix: 'drafter' });
   if (!result) return null;
   return { draft: result.draft || '', notes: result.notes || '', confidence: Number(result.confidence) || 0 };
 }

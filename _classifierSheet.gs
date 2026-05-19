@@ -104,10 +104,8 @@ function install() {
   } else {
     validate();
   }
-  const apiKey = PropertiesService.getScriptProperties().getProperty(PROPS.GEMINI_API_KEY);
-  Logger.log(apiKey
-    ? `✓ GEMINI_API_KEY is set (length ${apiKey.length})`
-    : `⚠ GEMINI_API_KEY not set. Project Settings → Script Properties → add it.`);
+  const probe = callGemini_('Respond with {"ok":true}', { logPrefix: 'install-probe' });
+  Logger.log(probe && probe.ok ? '✓ Gemini API reachable' : '⚠ Gemini API unreachable');
   try {
     Gmail.Users.getProfile('me');
     Logger.log('✓ Gmail Advanced Service is enabled');
@@ -158,9 +156,6 @@ function diagnose() {
     const lastTs = tabs.decisions.getRange(counts.decisions + 1, 1).getValue();
     Logger.log('Latest Decisions row: ' + lastTs);
   }
-
-  const apiKey = PropertiesService.getScriptProperties().getProperty(PROPS.GEMINI_API_KEY);
-  Logger.log(apiKey ? '✓ GEMINI_API_KEY set' : '⚠ GEMINI_API_KEY missing');
 
   try { Gmail.Users.getProfile('me'); Logger.log('✓ Gmail Advanced Service enabled'); }
   catch (e) { Logger.log('⚠ Gmail Advanced Service not enabled: ' + e.toString()); }

@@ -103,8 +103,7 @@ const WINS_HEADERS = ['computedAt', 'threadId', 'sender', 'subject', 'function',
 const PROPS = {
   LAST_CLEANED_TIME: 'lastCleanedTime',
   OFFSET: 'offset',
-  CLASSIFIER_SHEET_ID: 'CLASSIFIER_SHEET_ID',
-  GEMINI_API_KEY: 'GEMINI_API_KEY'
+  CLASSIFIER_SHEET_ID: 'CLASSIFIER_SHEET_ID'
 };
 
 const TRIGGER_CLEANUP_MIN = 5;

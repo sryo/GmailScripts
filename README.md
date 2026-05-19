@@ -33,8 +33,8 @@ If this approach resonates, check out [Posta](https://sryo.github.io/Posta/), my
 
 ## Classifier setup (one-time)
 
-1. Add `GEMINI_API_KEY` to Script Properties ([get one](https://aistudio.google.com/app/apikey)).
-2. Run `install()` from the editor. It creates the spreadsheet, sets up the triggers, and confirms Gmail's Advanced Service is enabled.
+1. Enable the [Generative Language API](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com) on the script's GCP project.
+2. Run `install()` from the editor.
 3. Flip `CLASSIFIER_SHADOW_MODE` to `false` in `_config.gs` when you want the LLM to act on its verdicts.
 
 The classifier abstains until ~5 keep and ~5 trash examples accumulate in `Training` from your salvage/demote behavior.
