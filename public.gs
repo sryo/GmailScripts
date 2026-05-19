@@ -146,9 +146,7 @@ function writeThreadsToHtml(threadArray) {
 }
 
 function publishPublicThreads() {
-  if (!GmailApp.getUserLabelByName(LABEL_PUBLIC)) {
-    GmailApp.createLabel(LABEL_PUBLIC);
-  }
+  getOrCreateUserLabel(LABEL_PUBLIC);
 
   const cache = CacheService.getScriptCache();
   let html = cache.get('public_threads_html');

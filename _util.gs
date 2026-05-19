@@ -40,15 +40,20 @@ function buildLabelMap() {
   return map;
 }
 
+function createLabelWithPolicy_(name) {
+  const vis = labelVisibility(name);
+  return Gmail.Users.Labels.create({
+    name: name,
+    labelListVisibility: vis.label,
+    messageListVisibility: vis.message
+  }, 'me');
+}
+
 // Get-or-create a Gmail advanced-service label, mutating the cache map so subsequent calls in the same run are free.
 function getOrCreateLabelCached(labelMap, name) {
   var key = name.toLowerCase();
   if (labelMap[key]) return labelMap[key];
-  var created = Gmail.Users.Labels.create({
-    name: name,
-    labelListVisibility: 'labelHide',
-    messageListVisibility: 'show'
-  }, 'me');
+  var created = createLabelWithPolicy_(name);
   labelMap[key] = created;
   return created;
 }
@@ -59,8 +64,9 @@ function timeBudgetExceeded(startMs) {
 
 function getOrCreateUserLabel(name) {
   let label = GmailApp.getUserLabelByName(name);
-  if (label == null) label = GmailApp.createLabel(name);
-  return label;
+  if (label) return label;
+  createLabelWithPolicy_(name);
+  return GmailApp.getUserLabelByName(name);
 }
 
 function extractThreadFeatures(thread, firstMessage) {
