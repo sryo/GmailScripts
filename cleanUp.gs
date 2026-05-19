@@ -55,6 +55,7 @@ function ping() {
   Logger.log(LABEL_PING + ' Pinging ' + candidates.length + ' forgotten reads.');
   markCleaned_();
   getOrCreateUserLabel(LABEL_PING).addToThreads(candidates);
+  getOrCreateUserLabel(LABEL_AUTOREPLY).addToThreads(candidates);
   applyPingTo_(candidates);
 }
 
@@ -73,6 +74,7 @@ function syncManualPings_() {
     getOrCreateUserLabel(LABEL_PRETRASH).removeFromThreads(salvaged);
     Logger.log(LABEL_PING + ' Stripped ' + LABEL_PRETRASH + ' from ' + salvaged.length + ' threads (manual ping override).');
   }
+  getOrCreateUserLabel(LABEL_AUTOREPLY).addToThreads(untracked);
   applyPingTo_(untracked);
 }
 
@@ -107,18 +109,19 @@ function archiveDismissedPings_() {
   if (toArchive.length === 0) return;
   Logger.log('📦 Archiving ' + toArchive.length + ' dismissed pings.');
   markCleaned_();
+  removeLabelIfExists_(LABEL_AUTOREPLY, toArchive);
   GmailApp.moveThreadsToArchive(toArchive);
 }
 
 function archiveStalePings_() {
   // Passive dismissal: a pinged thread that aged past PING_MAX_AGE_DAYS without you acting.
-  // Remove the ping label too so the thread is fully reset.
+  // Remove ping and riff labels so the thread is fully reset.
   const threads = GmailApp.search('label:"' + LABEL_PING + '" in:inbox older_than:' + PING_EXPIRE_DAYS + 'd');
   if (threads.length === 0) return;
   Logger.log('📦 Archiving ' + threads.length + ' stale pings.');
   markCleaned_();
-  const pingLabel = GmailApp.getUserLabelByName(LABEL_PING);
-  if (pingLabel) pingLabel.removeFromThreads(threads);
+  removeLabelIfExists_(LABEL_PING, threads);
+  removeLabelIfExists_(LABEL_AUTOREPLY, threads);
   GmailApp.moveThreadsToArchive(threads);
 }
 

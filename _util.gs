@@ -146,6 +146,12 @@ function cleanDemotedThreads(threads, source) {
   removeStashLabel(threads);
 }
 
+function removeLabelIfExists_(name, threads) {
+  if (!threads || threads.length === 0) return;
+  const l = GmailApp.getUserLabelByName(name);
+  if (l) l.removeFromThreads(threads);
+}
+
 // Removes the Stash label from a batch of threads. Used when an attachment-bearing thread
 // loses importance, so 🪎 doesn't outlive the importance flag.
 function removeStashLabel(threads) {

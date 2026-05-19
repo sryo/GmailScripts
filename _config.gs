@@ -134,6 +134,10 @@ Rules:
 Edge cases (return draft:"" with a notes line explaining):
 - Thread has no message from anyone other than ${ctx.userEmail}.
 - The most recent message is already from ${ctx.userEmail} (user already replied).
+- Transactional: booking/flight/ticket confirmation, order receipt, shipment update, OTP, password reset, policy or document delivery, medical or appointment confirmation.
+- Marketing or one-way announcement: newsletter, product launch, promo, subscription welcome, "your X is ready" notifications.
+- Closing acknowledgment: the most recent incoming message is a brief thanks with no question or request, after the user already replied.
+- Out-of-office or vacation auto-responder.
 
 Thread subject: ${ctx.subject}
 
