@@ -206,9 +206,10 @@ function ensureLabels_() {
 
 function ensureTriggers_() {
   const wanted = [
-    { fn: 'cleanUp',            minutes: TRIGGER_CLEANUP_MIN },
-    { fn: 'bunch',              minutes: TRIGGER_BUNCH_MIN },
-    { fn: 'removeEmptyLabels',  minutes: TRIGGER_REMOVE_EMPTY_LABELS_MIN }
+    { fn: 'cleanUp',                  kind: 'minutes', value: TRIGGER_CLEANUP_MIN },
+    { fn: 'bunch',                    kind: 'minutes', value: TRIGGER_BUNCH_MIN },
+    { fn: 'removeEmptyLabels',        kind: 'minutes', value: TRIGGER_REMOVE_EMPTY_LABELS_MIN },
+    { fn: TRIGGER_BURNDOWN_HANDLER,   kind: 'dailyAtHour', value: BURNDOWN_HOUR }
   ];
   const wantedNames = new Set(wanted.map(w => w.fn));
   // Single pass: drop orphan triggers left over from renames, collect survivors.
@@ -226,9 +227,14 @@ function ensureTriggers_() {
   wanted.forEach(w => {
     if (existing.has(w.fn)) {
       Logger.log(`✓ trigger for ${w.fn} already exists`);
-    } else {
-      ScriptApp.newTrigger(w.fn).timeBased().everyMinutes(w.minutes).create();
-      Logger.log(`+ created trigger for ${w.fn} (every ${w.minutes} min)`);
+      return;
+    }
+    if (w.kind === 'minutes') {
+      ScriptApp.newTrigger(w.fn).timeBased().everyMinutes(w.value).create();
+      Logger.log(`+ created trigger for ${w.fn} (every ${w.value} min)`);
+    } else if (w.kind === 'dailyAtHour') {
+      ScriptApp.newTrigger(w.fn).timeBased().atHour(w.value).everyDays(1).create();
+      Logger.log(`+ created daily trigger for ${w.fn} at hour ${w.value}`);
     }
   });
 }

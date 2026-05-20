@@ -160,6 +160,50 @@ function removeStashLabel(threads) {
   if (stashLabel) stashLabel.removeFromThreads(threads);
 }
 
+function buildDraftMapForThreads_() {
+  const map = new Map();
+  GmailApp.getDrafts().forEach(d => {
+    try { map.set(d.getMessage().getThread().getId(), d); } catch (e) { /* dangling draft */ }
+  });
+  return map;
+}
+
+function buildDraftThreadIdSet_() {
+  return new Set(buildDraftMapForThreads_().keys());
+}
+
+// Quoted-original block so recipients see context — matches Gmail's Reply UI output.
+function buildReplyBody_(thread, draftText, userEmail) {
+  const lower = userEmail.toLowerCase();
+  const original = thread.getMessages().slice().reverse().find(m => !m.getFrom().toLowerCase().includes(lower));
+  const escapedDraft = escapeHtml(draftText).replace(/\n/g, '<br>');
+  if (!original) return { body: draftText, htmlBody: `<div>${escapedDraft}</div>` };
+
+  const attribution = `On ${formatReplyDate_(original.getDate())}, ${original.getFrom()} wrote:`;
+  const quotedPlain = (original.getPlainBody() || '').split('\n').map(l => '> ' + l).join('\n');
+  const body = `${draftText}\n\n${attribution}\n${quotedPlain}`;
+
+  const htmlBody =
+    `<div>${escapedDraft}</div>` +
+    `<div><br></div>` +
+    `<div>${escapeHtml(attribution)}</div>` +
+    `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex;">${original.getBody() || ''}</blockquote>`;
+
+  return { body, htmlBody };
+}
+
+function formatReplyDate_(date) {
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), "EEE, MMM d, yyyy 'at' h:mm a");
+}
+
+function wasReplySentAfter_(thread, userEmail, sinceTimestamp) {
+  const since = new Date(sinceTimestamp);
+  const lower = userEmail.toLowerCase();
+  return thread.getMessages().some(m =>
+    m.getFrom().toLowerCase().includes(lower) && m.getDate() > since
+  );
+}
+
 // Removes domain-style user labels (those produced by bunch) from threads
 // that no longer belong in a bunch: typically threads just demoted from important.
 function stripBunchLabels(threads) {

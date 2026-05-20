@@ -170,7 +170,8 @@ function collectStale_(trackingData, rowsToDelete) {
     [TRACKING_TYPE_PRETRASHED]:           (PRETRASH_AGE_DAYS + 1)        * 24 * 3600 * 1000,
     [TRACKING_TYPE_CLASSIFIED_IMPORTANCE]: CLASSIFIED_IMPORTANCE_TTL_DAYS * 24 * 3600 * 1000,
     [TRACKING_TYPE_LLM_DEMOTED]:          LLM_DEMOTED_TTL_DAYS           * 24 * 3600 * 1000,
-    [TRACKING_TYPE_LLM_PROMOTED]:         LLM_PROMOTED_TTL_DAYS          * 24 * 3600 * 1000
+    [TRACKING_TYPE_LLM_PROMOTED]:         LLM_PROMOTED_TTL_DAYS          * 24 * 3600 * 1000,
+    [TRACKING_TYPE_BURNDOWN_PROCESSED]:   BURNDOWN_PROCESSED_TTL_DAYS    * 24 * 3600 * 1000
   };
   for (let i = 1; i < trackingData.length; i++) {
     const [, type] = trackingData[i];
@@ -203,7 +204,8 @@ function buildTrackingIndex(trackingData) {
     [TRACKING_TYPE_LLM_DEMOTED]: {},
     [TRACKING_TYPE_LLM_PROMOTED]: {},
     [TRACKING_TYPE_PINGED]: {},
-    [TRACKING_TYPE_DRAFTED]: {}
+    [TRACKING_TYPE_DRAFTED]: {},
+    [TRACKING_TYPE_BURNDOWN_PROCESSED]: {}
   };
   for (let i = 1; i < trackingData.length; i++) {
     const [threadId, type] = trackingData[i];

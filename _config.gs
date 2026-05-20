@@ -59,10 +59,21 @@ const VOICE_EXAMPLES_MAX = 10; // recommended; do not exceed 10 or prompt grows 
 const VOICE_EXAMPLE_BODY_CAP = 1000;
 const REPLY_THREAD_MESSAGE_WINDOW = 5;
 const REPLY_MESSAGE_BODY_CAP = 4000;
+const BURNDOWN_LIMIT = 15;
+const BURNDOWN_AUTOSEND = false;
+const BURNDOWN_HOUR = 8;
+const BURNDOWN_SNIPPET_CAP = 240;
+const BURNDOWN_SUBJECT_PREFIX = 'Burndown';
+const BURNDOWN_MARKER_PREFIX = '━ thread ';
+const BURNDOWN_TABLE_HEADER_LEFT = 'Mail';
+const BURNDOWN_TABLE_HEADER_RIGHT = 'Your reply';
+const BURNDOWN_REPLY_PROMPT = 'Your reply:';
+const BURNDOWN_QUERY = 'is:important is:unread in:inbox -from:me -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_PUBLIC + '" newer_than:7d';
 const CLASSIFIED_IMPORTANCE_TTL_DAYS = 7;
 const LLM_DEMOTED_TTL_DAYS = 30;
 const LLM_PROMOTED_TTL_DAYS = 30;
 const DECISIONS_TTL_DAYS = 60;
+const BURNDOWN_PROCESSED_TTL_DAYS = 14;
 
 const VERDICT_KEEP = 'keep';
 const VERDICT_TRASH = 'trash';
@@ -84,6 +95,7 @@ const TRACKING_TYPE_UNIMPORTANT_SEEN = 'unimportant_seen';
 const TRACKING_TYPE_LLM_PROMOTED = 'llm_promoted';
 const TRACKING_TYPE_PINGED = 'pinged';
 const TRACKING_TYPE_DRAFTED = 'drafted';
+const TRACKING_TYPE_BURNDOWN_PROCESSED = 'burndown_processed';
 
 const SOURCE_SALVAGED = 'salvaged';
 const SOURCE_DEMOTED_IMPORTANT = 'demoted_important';
@@ -110,6 +122,7 @@ const PROPS = {
 const TRIGGER_CLEANUP_MIN = 5;
 const TRIGGER_BUNCH_MIN = 1;
 const TRIGGER_REMOVE_EMPTY_LABELS_MIN = 30;
+const TRIGGER_BURNDOWN_HANDLER = 'sendBurndown';
 const MENU_HANDLER = 'addClassifierMenu';
 
 const REPLY_PROMPT = (ctx, voiceBlock, messagesBlock) => `You draft a concise email reply on behalf of ${ctx.userEmail}.
@@ -148,3 +161,17 @@ ${messagesBlock}
 
 Respond with JSON only:
 {"detectedLanguage": "ISO 639-1 code of the most recent incoming message, e.g., 'en', 'es', 'fr'", "draft": "string", "confidence": 0.0-1.0, "notes": "string or empty"}`;
+
+const BURNDOWN_SUMMARY_PROMPT = (itemsBlock) => `You write one-sentence summaries of unread email threads for a daily reply digest.
+
+Rules:
+- One sentence per thread, under 20 words.
+- Lead with the ask or the fact, not "the sender". Skip "this email is about".
+- Reply in the language of the thread (detect from subject + snippet).
+- Stay neutral; don't editorialize.
+
+Threads (one per id):
+${itemsBlock}
+
+Respond with JSON only:
+{"summaries": [{"id": "...", "summary": "..."}, ...]}`;

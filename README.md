@@ -31,6 +31,8 @@ If this approach resonates, check out [Posta](https://sryo.github.io/Posta/), my
 
 **`bunch.gs`**. Groups important untagged threads under per-domain labels.
 
+**`burndown.gs`**. The threads you didn't get to yesterday, all in one mail. Reply once. Drafts land on each thread.
+
 ## Classifier setup (one-time)
 
 1. Add `GEMINI_API_KEY` to Script Properties ([get one](https://aistudio.google.com/app/apikey)).

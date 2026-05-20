@@ -18,6 +18,7 @@ function cleanUp() {
   try { harvestCorrections(); } catch (e) { console.log('harvestCorrections failed: ' + e.toString()); }
   try { computeWins(); } catch (e) { console.log('computeWins failed: ' + e.toString()); }
   try { riff(); } catch (e) { console.log('riff failed: ' + e.toString()); }
+  try { processBurndownReplies_(); } catch (e) { console.log('processBurndownReplies_ failed: ' + e.toString()); }
   markDoneAsRead();
   markPinnedAsImportant();
   try { promoteFalseUnimportant(); } catch (e) { console.log('promoteFalseUnimportant failed: ' + e.toString()); }

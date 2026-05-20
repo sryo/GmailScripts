@@ -26,8 +26,9 @@ self-running system, not an admin task.
 - `cleanUp`: every 5 min.
 - `bunch`: every 1 min.
 - `removeEmptyLabels`: every 30 min.
+- `sendBurndown`: daily at `BURNDOWN_HOUR`.
 
-`ping`, `stash`, `archive*` etc. run inside `cleanUp()`. No separate trigger.
+`ping`, `stash`, `archive*`, `processBurndownReplies_` etc. run inside `cleanUp()`. No separate trigger.
 
 ## User assumptions
 The user expresses intent through Gmail's importance flag and the script-managed
@@ -57,6 +58,8 @@ with **🫵** so the drafter has voice examples to mimic.
 - Script drafts a reply on 🦾-labeled threads using up to VOICE_EXAMPLES_MAX sent emails labeled 🫵 as few-shot.
 - The 🦾 label stays until the draft is sent or deleted by the user; only then does the script remove it.
 - A pretrashed thread (🗑️) carries no other labels; entry points strip them.
+- Burndown sends one self-mail digest per day listing important unread unreplied threads with Riff drafts as suggestions; the user's reply to that digest is parsed into per-thread drafts (or sends, if `BURNDOWN_AUTOSEND`).
+- Each user reply to a burndown is processed at most once, keyed by message ID via `TRACKING_TYPE_BURNDOWN_PROCESSED`.
 
 ## Self-bias prevention
 LLM-driven importance flips would otherwise look like user signal. Filtered via:
@@ -77,8 +80,8 @@ LLM-driven importance flips would otherwise look like user signal. Filtered via:
 - LockService for cleanUp concurrency.
 
 ## Vocabulary
-Borrowed from [Posta](https://sryo.github.io/Posta/):
-Hot, Meh, Ping, Bunch, Stash.
+Hot, Meh, Ping, Bunch, Stash borrowed from [Posta](https://sryo.github.io/Posta/).
+Burndown is the daily reply-triage digest.
 
 ## Constants
 All in `_config.gs`. Time windows, TTLs, classifier thresholds, search batch limits.
