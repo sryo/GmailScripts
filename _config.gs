@@ -120,8 +120,13 @@ const PROPS = {
 };
 
 const TRIGGER_CLEANUP_MIN = 5;
-const TRIGGER_BUNCH_MIN = 1;
+const TRIGGER_CLEANUP_DEEP_MIN = 15;
+const TRIGGER_BUNCH_MIN = 5;
 const TRIGGER_REMOVE_EMPTY_LABELS_MIN = 30;
+const TRIGGER_CLEANUP_HANDLER = 'cleanUp';
+const TRIGGER_CLEANUP_DEEP_HANDLER = 'cleanUpDeep';
+const TRIGGER_BUNCH_HANDLER = 'bunch';
+const TRIGGER_REMOVE_EMPTY_LABELS_HANDLER = 'removeEmptyLabels';
 const TRIGGER_BURNDOWN_HANDLER = 'sendBurndown';
 const MENU_HANDLER = 'addClassifierMenu';
 

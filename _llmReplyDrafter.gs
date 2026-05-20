@@ -1,6 +1,5 @@
 /*
-Gemini Flash reply drafter. Builds a context from a thread plus the user's voice
-examples (sent emails labeled 🫵) and asks Gemini for a short reply draft.
+Drafts a reply that mimics your 🫵-labeled sent emails.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
@@ -40,19 +39,6 @@ function loadVoiceExamples_(userEmail) {
       body: stripQuotedReplyHistory_(msg.getPlainBody() || '').substring(0, VOICE_EXAMPLE_BODY_CAP)
     };
   });
-}
-
-function stripQuotedReplyHistory_(text) {
-  if (!text) return '';
-  const lines = text.split('\n');
-  const out = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (/^On .+ wrote:\s*$/.test(line.trim())) break;
-    if (/^>+/.test(line)) continue;
-    out.push(line);
-  }
-  return out.join('\n').trim();
 }
 
 function buildReplyPrompt_(ctx) {

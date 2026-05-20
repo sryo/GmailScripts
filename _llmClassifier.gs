@@ -1,6 +1,5 @@
 /*
-Gemini Flash classifier and shadow-mode logger.
-Requires Script Property GEMINI_API_KEY.
+Asks Gemini whether to keep or trash, using your past corrections as examples.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 

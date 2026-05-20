@@ -1,5 +1,5 @@
 /*
-Joins Decisions × Training to score how often the LLM is validated by user behavior.
+Scores how often the LLM is validated by user behavior.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 

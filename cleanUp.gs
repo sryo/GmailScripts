@@ -1,28 +1,13 @@
 /*
-Script that schedules unimportant mails for deletion and other general cleanup routines.
+Fast pass: labels, archives, ping, stash.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
-const userProperties = PropertiesService.getUserProperties();
-let lastCleanedTime = null;
-let cleanedInCurrentIteration = false;
-
 function cleanUp() {
-  cleanedInCurrentIteration = false;
-  lastCleanedTime = userProperties.getProperty(PROPS.LAST_CLEANED_TIME);
-  if (lastCleanedTime == null) {
-    lastCleanedTime = new Date().toISOString();
-    userProperties.setProperty(PROPS.LAST_CLEANED_TIME, lastCleanedTime);
-  }
+  initCleanRun_();
 
-  try { harvestCorrections(); } catch (e) { console.log('harvestCorrections failed: ' + e.toString()); }
-  try { computeWins(); } catch (e) { console.log('computeWins failed: ' + e.toString()); }
-  try { riff(); } catch (e) { console.log('riff failed: ' + e.toString()); }
-  try { processBurndownReplies_(); } catch (e) { console.log('processBurndownReplies_ failed: ' + e.toString()); }
   markDoneAsRead();
   markPinnedAsImportant();
-  try { promoteFalseUnimportant(); } catch (e) { console.log('promoteFalseUnimportant failed: ' + e.toString()); }
-  try { demoteFalseImportant(); } catch (e) { console.log('demoteFalseImportant failed: ' + e.toString()); }
   deleteOlder();
   preTrashLowPriority();
   markTrashAsUnimportant();
@@ -35,11 +20,6 @@ function cleanUp() {
   logCleanDate();
 }
 
-function markCleaned_() {
-  cleanedInCurrentIteration = true;
-  lastCleanedTime = new Date().toISOString();
-}
-
 function archiveInbox() {
   const threads = GmailApp.search('label:inbox is:read older_than:' + ARCHIVE_INBOX_AGE_DAYS + 'd -label:pinned -label:snoozed -label:"' + LABEL_PING + '" -label:"' + LABEL_AUTOREPLY + '"');
   if (threads.length === 0) return;
@@ -49,7 +29,7 @@ function archiveInbox() {
 }
 
 function ping() {
-  const pinged = buildTrackingIndex(getClassifierTabs().tracking.getDataRange().getValues())[TRACKING_TYPE_PINGED];
+  const pinged = buildTrackingIndex(getTrackingValues_())[TRACKING_TYPE_PINGED];
   const threads = GmailApp.search('is:read older_than:' + PING_PICKUP_DAYS + 'd newer_than:' + PING_EXPIRE_DAYS + 'd -from:me -label:done -label:pinned -label:snoozed -label:"' + LABEL_PING + '" -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_AUTOREPLY + '" -label:"' + LABEL_STASH + '" -in:trash');
   const candidates = threads.filter(t => t.getMessageCount() === 1 && !pinged[t.getId()]);
   if (candidates.length === 0) return;
@@ -63,7 +43,7 @@ function ping() {
 function syncManualPings_() {
   // Detects threads the user labeled ↩️ themselves and treats them like an auto-ping.
   // If the thread also carries 🗑️, strip pretrash: applying ↩️ is a stronger salvage signal.
-  const pinged = buildTrackingIndex(getClassifierTabs().tracking.getDataRange().getValues())[TRACKING_TYPE_PINGED];
+  const pinged = buildTrackingIndex(getTrackingValues_())[TRACKING_TYPE_PINGED];
   const threads = GmailApp.search('label:"' + LABEL_PING + '" -in:trash');
   const untracked = threads.filter(t => !pinged[t.getId()]);
   if (untracked.length === 0) return;
@@ -82,14 +62,14 @@ function syncManualPings_() {
 function applyPingTo_(threads) {
   if (!threads || threads.length === 0) return;
   GmailApp.moveThreadsToInbox(threads);
-  try { recordTrackingRows(threads.map(t => t.getId()), TRACKING_TYPE_PINGED); } catch (e) { console.log('ping track: ' + e.toString()); }
+  safely_('ping track', () => recordTrackingRows(threads.map(t => t.getId()), TRACKING_TYPE_PINGED));
 }
 
 function archiveDismissedPings_() {
   // Dismissal contract: the user removes the ↩️ label to dismiss a ping. We never strip the label
   // ourselves; its absence is the gesture. Tracking row stays after dismissal as a permanent
   // "already pinged" marker so ping() won't resurface the same thread twice.
-  const pinged = buildTrackingIndex(getClassifierTabs().tracking.getDataRange().getValues())[TRACKING_TYPE_PINGED];
+  const pinged = buildTrackingIndex(getTrackingValues_())[TRACKING_TYPE_PINGED];
   const trackedIds = Object.keys(pinged);
   if (trackedIds.length === 0) return;
 
@@ -152,7 +132,7 @@ function preTrashLowPriority() {
   getOrCreateUserLabel(LABEL_PRETRASH).addToThreads(threads);
   GmailApp.moveThreadsToArchive(threads);
   stripAllLabelsExcept(threads, [LABEL_PRETRASH]);
-  try { trackPretrashedBatch(threads.map(t => t.getId())); } catch (e) { console.log('trackPretrashedBatch failed: ' + e.toString()); }
+  safely_('trackPretrashedBatch', () => trackPretrashedBatch(threads.map(t => t.getId())));
 }
 
 function cleanPretrashLegacyLabels() {
@@ -165,77 +145,6 @@ function cleanPretrashLegacyLabels() {
   }
   Logger.log('Stripping all non-pretrash labels from ' + threads.length + ' pretrashed threads.');
   stripAllLabelsExcept(threads, [LABEL_PRETRASH]);
-}
-
-function demoteFalseImportant() {
-  const threads = GmailApp.search('is:important in:inbox -label:pinned -label:snoozed -is:starred -label:"' + LABEL_PUBLIC + '" -label:"' + LABEL_AUTOREPLY + '" -label:' + LABEL_PRETRASH);
-  applyClassifierImportance_(threads, {
-    fnName: 'demoteFalseImportant',
-    gmailVerdict: VERDICT_KEEP,
-    triggerVerdict: VERDICT_TRASH,
-    emoji: '📉',
-    applyFn: ts => GmailApp.markThreadsUnimportant(ts),
-    llmActionType: TRACKING_TYPE_LLM_DEMOTED
-  });
-}
-
-function promoteFalseUnimportant() {
-  const threads = GmailApp.search('is:unimportant in:inbox -label:pinned -label:snoozed -label:done -label:"' + LABEL_AUTOREPLY + '" -label:' + LABEL_PRETRASH + ' newer_than:' + PROMOTE_LOOKBACK_DAYS + 'd');
-  applyClassifierImportance_(threads, {
-    fnName: 'promoteFalseUnimportant',
-    gmailVerdict: VERDICT_TRASH,
-    triggerVerdict: VERDICT_KEEP,
-    emoji: '⭐',
-    applyFn: ts => GmailApp.markThreadsImportant(ts),
-    llmActionType: TRACKING_TYPE_LLM_PROMOTED
-  });
-}
-
-function applyClassifierImportance_(threads, opts) {
-  if (threads.length === 0) return;
-
-  const tabs = getClassifierTabs();
-  const trackingIndex = buildTrackingIndex(tabs.tracking.getDataRange().getValues());
-  const classified = trackingIndex[TRACKING_TYPE_CLASSIFIED_IMPORTANCE];
-
-  // Skip threads classified within the last CLASSIFIED_IMPORTANCE_TTL_DAYS; cuts repeat Gemini spend.
-  const eligible = threads.filter(t => !classified[t.getId()]);
-  if (eligible.length === 0) return;
-
-  const features = buildThreadFeatures(eligible);
-  const results = classifyFeatures(features);
-  if (!results) return;
-
-  const byId = {};
-  results.forEach(r => byId[r.id] = r);
-
-  const toAct = [];
-  const classifiedIds = [];
-  const decisionRows = [];
-  const now = new Date().toISOString();
-
-  features.forEach((f, i) => {
-    const res = byId[f.id];
-    if (!res) return;
-    const llmVerdict = String(res.verdict || '').toLowerCase();
-    const conf = Number(res.confidence) || 0;
-    const shouldAct = !CLASSIFIER_SHADOW_MODE && llmVerdict === opts.triggerVerdict && conf >= CLASSIFIER_CONFIDENCE_THRESHOLD;
-    const actor = shouldAct ? ACTOR_LLM : ACTOR_GMAIL;
-    decisionRows.push([now, f.id, f.sender, f.subject, opts.fnName, opts.gmailVerdict, llmVerdict, conf, actor]);
-    classifiedIds.push(f.id);
-    if (shouldAct) toAct.push(eligible[i]);
-  });
-
-  try { appendRowsBatch(tabs.decisions, decisionRows); } catch (e) { console.log(opts.fnName + ' log: ' + e.toString()); }
-  try { recordTrackingRows(classifiedIds, TRACKING_TYPE_CLASSIFIED_IMPORTANCE); } catch (e) { console.log(opts.fnName + ' track: ' + e.toString()); }
-
-  if (toAct.length > 0) {
-    markCleaned_();
-    Logger.log(opts.emoji + ' ' + opts.fnName + ': ' + toAct.length + ' of ' + eligible.length + '.');
-    opts.applyFn(toAct);
-    if (opts.llmActionType) recordTrackingRows(toAct.map(t => t.getId()), opts.llmActionType);
-    if (opts.llmActionType === TRACKING_TYPE_LLM_DEMOTED) cleanDemotedThreads(toAct, 'LLM-demoted');
-  }
 }
 
 function deleteOlder() {
@@ -262,47 +171,3 @@ function markTrashAsUnimportant() {
   GmailApp.markThreadsUnimportant(threads);
 }
 
-function removeEmptyLabels() {
-  const labels = GmailApp.getUserLabels();
-  const limit = 50;
-  let offset = parseInt(userProperties.getProperty(PROPS.OFFSET), 10);
-  if (isNaN(offset) || offset >= labels.length) offset = 0;
-
-  if (labels.length === 0) {
-    Logger.log("No labels to process.");
-  } else {
-    const end = Math.min(offset + limit, labels.length);
-    const filled = Math.min(10, Math.floor(end / labels.length * 10));
-    Logger.log('🟩'.repeat(filled) + '⬜'.repeat(10 - filled) + ' ' + offset + '-' + end + ' / ' + labels.length);
-  }
-
-  let i;
-  for (i = offset; i < offset + limit && i < labels.length; i++) {
-    const name = labels[i].getName();
-    if (PROTECTED_LABELS.includes(name)) continue;
-    if (labels[i].getThreads().length === 0) {
-      labels[i].deleteLabel();
-      Logger.log('🏷️ Deleted empty label: ' + name);
-      markCleaned_();
-    }
-  }
-  userProperties.setProperty(PROPS.OFFSET, i);
-}
-
-function logCleanDate() {
-  if (cleanedInCurrentIteration) {
-    userProperties.setProperty(PROPS.LAST_CLEANED_TIME, lastCleanedTime);
-  } else {
-    console.log("✨ All clean since " + lastCleanedTime);
-  }
-}
-
-function removeAllLabels() {
-  const threads = GmailApp.search('-has:nouserlabels', 0, 25);
-  for (let i = 0; i < threads.length; i++) {
-    const labels = threads[i].getLabels();
-    for (let k = 0; k < labels.length; k++) {
-      threads[i].removeLabel(labels[k]);
-    }
-  }
-}

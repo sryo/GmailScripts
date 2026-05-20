@@ -1,6 +1,5 @@
 /*
-Bunch: groups important threads by sender domain so all conversations with a
-sender land under one label, Hey-style.
+Bunches important threads by sender domain. Sweeps empty user labels.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
@@ -101,4 +100,32 @@ function extractDomain(sender) {
 function extractSenderName(sender) {
   const match = sender.match(/^([^<]*)</);
   return match ? match[1].trim() : sender;
+}
+
+// Sweeps user labels in pages of 50; resumes via PROPS.OFFSET across runs.
+function removeEmptyLabels() {
+  const labels = GmailApp.getUserLabels();
+  const limit = 50;
+  let offset = parseInt(userProperties.getProperty(PROPS.OFFSET), 10);
+  if (isNaN(offset) || offset >= labels.length) offset = 0;
+
+  if (labels.length === 0) {
+    Logger.log("No labels to process.");
+  } else {
+    const end = Math.min(offset + limit, labels.length);
+    const filled = Math.min(10, Math.floor(end / labels.length * 10));
+    Logger.log('🟩'.repeat(filled) + '⬜'.repeat(10 - filled) + ' ' + offset + '-' + end + ' / ' + labels.length);
+  }
+
+  let i;
+  for (i = offset; i < offset + limit && i < labels.length; i++) {
+    const name = labels[i].getName();
+    if (PROTECTED_LABELS.includes(name)) continue;
+    if (labels[i].getThreads().length === 0) {
+      labels[i].deleteLabel();
+      Logger.log('🏷️ Deleted empty label: ' + name);
+      markCleaned_();
+    }
+  }
+  userProperties.setProperty(PROPS.OFFSET, i);
 }

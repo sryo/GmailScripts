@@ -23,12 +23,17 @@ the mailbox with bookkeeping the user has to maintain. The user wants a
 self-running system, not an admin task.
 
 ## Triggers
-- `cleanUp`: every 5 min.
-- `bunch`: every 1 min.
+- `cleanUp`: every 5 min. Fast Gmail bookkeeping only.
+- `cleanUpDeep`: every 15 min. Gemini classifier, Riff drafter, training harvest, burndown-reply parsing.
+- `bunch`: every 5 min.
 - `removeEmptyLabels`: every 30 min.
 - `sendBurndown`: daily at `BURNDOWN_HOUR`.
 
-`ping`, `stash`, `archive*`, `processBurndownReplies_` etc. run inside `cleanUp()`. No separate trigger.
+Routines inside `cleanUp`: `markDone*`, `markPinned*`, `deleteOlder`, `preTrash*`, `markTrash*`, `archive*Pings_`, `ping`, `syncManualPings_`, `stash`, `archiveInbox`.
+
+Routines inside `cleanUpDeep`: `harvestCorrections`, `computeWins`, `riff`, `processBurndownReplies_`, `promoteFalseUnimportant`, `demoteFalseImportant`.
+
+After changing any `TRIGGER_*_MIN` constant, re-run `install` (it always recreates triggers).
 
 ## User assumptions
 The user expresses intent through Gmail's importance flag and the script-managed

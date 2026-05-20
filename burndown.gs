@@ -1,8 +1,5 @@
 /*
-Daily reply triage. sendBurndown emails the user a 2-column table of important
-unread unreplied threads with Gemini summaries and Riff suggestions; the user
-replies inline, and processBurndownReplies_ parses each user reply into per-
-thread drafts (or sends, if BURNDOWN_AUTOSEND).
+Reply to one daily digest to draft your whole morning's replies.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
@@ -108,7 +105,7 @@ function formatBurndownDate_() {
 
 function processBurndownReplies_() {
   const tabs = getClassifierTabs();
-  const processed = buildTrackingIndex(tabs.tracking.getDataRange().getValues())[TRACKING_TYPE_BURNDOWN_PROCESSED] || {};
+  const processed = buildTrackingIndex(getTrackingValues_())[TRACKING_TYPE_BURNDOWN_PROCESSED] || {};
   const userEmail = Gmail.Users.getProfile('me').emailAddress;
   const lower = userEmail.toLowerCase();
 

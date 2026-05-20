@@ -1,5 +1,5 @@
 /*
-Passive signal collection for the classifier training set.
+Builds classifier training rows from user corrections:
 - SALVAGE  (user removes 🗑️ on a pretrashed thread):  "keep this kind"  example
 - DEMOTE   (user flips is:important → unimportant):    "trash this kind" example
 - PROMOTE  (user flips is:unimportant → important):    "keep this kind"  example
@@ -9,7 +9,7 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 
 function harvestCorrections() {
   const tabs = getClassifierTabs();
-  const trackingData = tabs.tracking.getDataRange().getValues();
+  const trackingData = getTrackingValues_();
   const index = buildTrackingIndex(trackingData);
 
   const trainingRows = [];
@@ -23,19 +23,10 @@ function harvestCorrections() {
 
   appendRowsBatch(tabs.training, trainingRows);
   const deleteList = Object.keys(rowsToDelete).map(Number);
-  if (deleteList.length > 0) deleteRowsReverse(tabs.tracking, deleteList);
-}
-
-function trackPretrashedBatch(threadIds) {
-  if (!threadIds || threadIds.length === 0) return;
-  const existing = buildTrackingIndex(getClassifierTabs().tracking.getDataRange().getValues())[TRACKING_TYPE_PRETRASHED];
-  recordTrackingRows(threadIds.filter(id => !existing[id]), TRACKING_TYPE_PRETRASHED);
-}
-
-function recordTrackingRows(threadIds, type) {
-  if (!threadIds || threadIds.length === 0) return;
-  const now = new Date().toISOString();
-  appendRowsBatch(getClassifierTabs().tracking, threadIds.map(id => [id, type, now]));
+  if (deleteList.length > 0) {
+    deleteRowsReverse(tabs.tracking, deleteList);
+    invalidateTrackingValuesCache_();
+  }
 }
 
 function bootstrapTraining() {
@@ -195,21 +186,3 @@ function pruneDecisions_() {
   if (rowsToDelete.length > 0) deleteRowsReverse(decisions, rowsToDelete);
 }
 
-function buildTrackingIndex(trackingData) {
-  const idx = {
-    [TRACKING_TYPE_PRETRASHED]: {},
-    [TRACKING_TYPE_IMPORTANT_SEEN]: {},
-    [TRACKING_TYPE_UNIMPORTANT_SEEN]: {},
-    [TRACKING_TYPE_CLASSIFIED_IMPORTANCE]: {},
-    [TRACKING_TYPE_LLM_DEMOTED]: {},
-    [TRACKING_TYPE_LLM_PROMOTED]: {},
-    [TRACKING_TYPE_PINGED]: {},
-    [TRACKING_TYPE_DRAFTED]: {},
-    [TRACKING_TYPE_BURNDOWN_PROCESSED]: {}
-  };
-  for (let i = 1; i < trackingData.length; i++) {
-    const [threadId, type] = trackingData[i];
-    if (idx[type] && !idx[type][threadId]) idx[type][threadId] = i + 1;
-  }
-  return idx;
-}

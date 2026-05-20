@@ -1,5 +1,5 @@
 /*
-HTML escape/sanitize and shared Gmail helpers.
+Shared helpers.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
@@ -60,6 +60,27 @@ function getOrCreateLabelCached(labelMap, name) {
 
 function timeBudgetExceeded(startMs) {
   return Date.now() - startMs > EXECUTION_TIME_LIMIT_MS;
+}
+
+// Calls fn() and swallows any throw, logging "<label> failed: ...".
+// Used to keep one failing subroutine from aborting a cleanup pass.
+function safely_(label, fn) {
+  try { return fn(); } catch (e) { console.log(label + ' failed: ' + e.toString()); }
+}
+
+// Drops quoted reply history ("On ... wrote:" + leading-`>` lines) from a
+// plain-text email body. Used by drafter + burndown to get a clean snippet.
+function stripQuotedReplyHistory_(text) {
+  if (!text) return '';
+  const lines = text.split('\n');
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^On .+ wrote:\s*$/.test(line.trim())) break;
+    if (/^>+/.test(line)) continue;
+    out.push(line);
+  }
+  return out.join('\n').trim();
 }
 
 function getOrCreateUserLabel(name) {

@@ -1,12 +1,11 @@
 /*
-Apply 🦾 to any thread to add some AI muscle. Riff uses recent sent emails
-labeled 🫵 to match your voice.
+Apply 🦾 to add some AI muscle: Riff drafts a reply in your voice.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
 function riff() {
   const tabs = getClassifierTabs();
-  const trackingValues = tabs.tracking.getDataRange().getValues();
+  const trackingValues = getTrackingValues_();
   const drafted = buildTrackingIndex(trackingValues)[TRACKING_TYPE_DRAFTED];
   const threads = GmailApp.search('label:"' + LABEL_AUTOREPLY + '" -in:trash', 0, AUTOREPLY_BATCH_LIMIT);
   if (threads.length === 0) return;
@@ -70,6 +69,9 @@ function riff() {
   });
 
   const deleteList = Object.keys(rowsToDelete).map(Number);
-  if (deleteList.length > 0) deleteRowsReverse(tabs.tracking, deleteList);
+  if (deleteList.length > 0) {
+    deleteRowsReverse(tabs.tracking, deleteList);
+    invalidateTrackingValuesCache_();
+  }
 }
 
