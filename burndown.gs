@@ -104,8 +104,10 @@ function formatBurndownDate_() {
 // ===== Parser / actor =====
 
 function processBurndownReplies_() {
-  const tabs = getClassifierTabs();
-  const processed = buildTrackingIndex(getTrackingValues_())[TRACKING_TYPE_BURNDOWN_PROCESSED] || {};
+  // Tracking row uses message ID as the key (despite the schema's "threadId" column name) because
+  // the same digest thread can carry multiple distinct reply messages, each acting on a different
+  // set of threads. Renaming the column to be polymorphic would ripple through three other features.
+  const processed = buildSimpleTrackingIndex_(TRACKING_TYPE_BURNDOWN_PROCESSED);
   const userEmail = Gmail.Users.getProfile('me').emailAddress;
   const lower = userEmail.toLowerCase();
 
@@ -113,6 +115,7 @@ function processBurndownReplies_() {
   if (digestThreads.length === 0) return;
 
   const actedMsgIds = [];
+  const repliedThreadIds = [];
 
   digestThreads.forEach(thread => {
     const messages = thread.getMessages();
@@ -127,6 +130,7 @@ function processBurndownReplies_() {
         const entries = parseBurndownReply_(msg.getBody(), msg.getPlainBody());
         actOnBurndownEntries_(entries, digestDate, userEmail);
         actedMsgIds.push(msgId);
+        entries.forEach(e => { if (e.threadId && (e.replyText || '').trim()) repliedThreadIds.push(e.threadId); });
       } catch (e) {
         console.log('Burndown parse failed for ' + msgId + ': ' + e.toString());
       }
@@ -136,6 +140,9 @@ function processBurndownReplies_() {
   if (actedMsgIds.length > 0) {
     recordTrackingRows(actedMsgIds, TRACKING_TYPE_BURNDOWN_PROCESSED);
     Logger.log('🔥 Burndown processed ' + actedMsgIds.length + ' reply message(s).');
+  }
+  if (repliedThreadIds.length > 0) {
+    safely_('settleBurndownReplied', () => settleBurndownReplied(repliedThreadIds));
   }
 }
 

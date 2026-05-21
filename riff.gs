@@ -6,7 +6,7 @@ Author: Mateo Yadarola (teodalton@gmail.com)
 function riff() {
   const tabs = getClassifierTabs();
   const trackingValues = getTrackingValues_();
-  const drafted = buildTrackingIndex(trackingValues)[TRACKING_TYPE_DRAFTED];
+  const drafted = buildSimpleTrackingIndex_(TRACKING_TYPE_DRAFTED);
   const threads = GmailApp.search('label:"' + LABEL_AUTOREPLY + '" -in:trash', 0, AUTOREPLY_BATCH_LIMIT);
   if (threads.length === 0) return;
 

@@ -50,8 +50,6 @@ const PRETRASH_AGE_DAYS = 20;
 const ARCHIVE_INBOX_AGE_DAYS = 1;
 const PING_PICKUP_DAYS = 2;
 const PING_EXPIRE_DAYS = 4;
-const PROMOTE_LOOKBACK_DAYS = 14;
-const HARVEST_BATCH_LIMIT = 100;
 const BOOTSTRAP_SAMPLE_SIZE = 100;
 const AUTOREPLY_BATCH_LIMIT = 5;
 const AUTOREPLY_DRY_RUN = false;
@@ -69,48 +67,52 @@ const BURNDOWN_TABLE_HEADER_LEFT = 'Mail';
 const BURNDOWN_TABLE_HEADER_RIGHT = 'Your reply';
 const BURNDOWN_REPLY_PROMPT = 'Your reply:';
 const BURNDOWN_QUERY = 'is:important is:unread in:inbox -from:me -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_PUBLIC + '" newer_than:7d';
-const CLASSIFIED_IMPORTANCE_TTL_DAYS = 7;
-const LLM_DEMOTED_TTL_DAYS = 30;
-const LLM_PROMOTED_TTL_DAYS = 30;
-const DECISIONS_TTL_DAYS = 60;
 const BURNDOWN_PROCESSED_TTL_DAYS = 14;
+
+// Observation engine config.
+const FLIP_WINDOW_HOURS = 72;
+const OBSERVATION_LOOKBACK_DAYS = 14;
+const OBSERVATION_RETENTION_DAYS_CONFIRMED = 180; // corrected/seed rows are never expired
+const PENDING_EXPIRY_DAYS = 14;
+const OBSERVE_BATCH_LIMIT = 200;
+const SETTLE_BATCH_LIMIT = 200;
 
 const VERDICT_KEEP = 'keep';
 const VERDICT_TRASH = 'trash';
 
-const ACTOR_GMAIL = 'gmail';
-const ACTOR_LLM = 'llm';
+const OBS_STATE_PENDING   = 'pending';
+const OBS_STATE_CONFIRMED = 'confirmed';
+const OBS_STATE_CORRECTED = 'corrected';
+const OBS_STATE_EXPIRED   = 'expired';
 
-const OUTCOME_PENDING = 'pending';
-const OUTCOME_BOTH_RIGHT = 'both_right';
-const OUTCOME_BOTH_WRONG = 'both_wrong';
-const OUTCOME_LLM_WON = 'llm_won';
-const OUTCOME_LLM_LOST = 'llm_lost';
+const TRUTH_SOURCE_USER_FLIP           = 'user_flip';
+const TRUTH_SOURCE_USER_SALVAGE        = 'user_salvage';
+const TRUTH_SOURCE_USER_STAR_PIN       = 'user_star_pin';
+const TRUTH_SOURCE_USER_BURNDOWN_REPLY = 'user_burndown_reply';
+const TRUTH_SOURCE_GMAIL_HELD          = 'gmail_held';
+const TRUTH_SOURCE_SEED                = 'seed';
 
-const TRACKING_TYPE_PRETRASHED = 'pretrashed';
-const TRACKING_TYPE_IMPORTANT_SEEN = 'important_seen';
-const TRACKING_TYPE_CLASSIFIED_IMPORTANCE = 'classified_importance';
-const TRACKING_TYPE_LLM_DEMOTED = 'llm_demoted';
-const TRACKING_TYPE_UNIMPORTANT_SEEN = 'unimportant_seen';
-const TRACKING_TYPE_LLM_PROMOTED = 'llm_promoted';
 const TRACKING_TYPE_PINGED = 'pinged';
 const TRACKING_TYPE_DRAFTED = 'drafted';
 const TRACKING_TYPE_BURNDOWN_PROCESSED = 'burndown_processed';
 
-const SOURCE_SALVAGED = 'salvaged';
-const SOURCE_DEMOTED_IMPORTANT = 'demoted_important';
-const SOURCE_PROMOTED_UNIMPORTANT = 'promoted_unimportant';
-const SOURCE_BOOTSTRAP = 'bootstrap';
-
-const SHEET_TAB_TRAINING = 'Training';
+const SHEET_TAB_OBSERVATIONS = 'Observations';
+const SHEET_TAB_SCOREBOARD = 'Scoreboard';
 const SHEET_TAB_TRACKING = 'Tracking';
-const SHEET_TAB_DECISIONS = 'Decisions';
-const SHEET_TAB_WINS = 'Wins';
 
-const TRAINING_HEADERS = ['timestamp', 'threadId', 'sender', 'subject', 'snippet', 'verdict', 'source'];
+const OBSERVATIONS_HEADERS = [
+  'threadId', 'observedAt', 'sender', 'subject', 'snippet',
+  'gmailVerdict', 'pretrashed',
+  'llmVerdict', 'llmConfidence', 'llmActed',
+  'settledAt', 'truthVerdict', 'truthSource', 'state'
+];
+const SCOREBOARD_HEADERS = [
+  'computedAt', 'window',
+  'observed', 'settled', 'pending',
+  'gmailAccuracy', 'llmAccuracy', 'llmCoverage',
+  'llmWinsOverGmail', 'llmLossesToGmail', 'bothRight', 'bothWrong'
+];
 const TRACKING_HEADERS = ['threadId', 'type', 'timestamp'];
-const DECISIONS_HEADERS = ['timestamp', 'threadId', 'sender', 'subject', 'function', 'gmailVerdict', 'llmVerdict', 'llmConfidence', 'actor'];
-const WINS_HEADERS = ['computedAt', 'threadId', 'sender', 'subject', 'function', 'gmailVerdict', 'llmVerdict', 'actor', 'userVerdict', 'outcome', 'confidence'];
 
 const PROPS = {
   LAST_CLEANED_TIME: 'lastCleanedTime',

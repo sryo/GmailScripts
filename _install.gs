@@ -35,36 +35,40 @@ function diagnose() {
   Logger.log('Spreadsheet: ' + ss.getUrl());
 
   const tabs = getClassifierTabs();
-  const counts = {
-    training: Math.max(0, tabs.training.getLastRow() - 1),
-    tracking: Math.max(0, tabs.tracking.getLastRow() - 1),
-    decisions: Math.max(0, tabs.decisions.getLastRow() - 1),
-    wins: Math.max(0, tabs.wins.getLastRow() - 1)
-  };
-  Logger.log(`Rows: training=${counts.training}, tracking=${counts.tracking}, decisions=${counts.decisions}, wins=${counts.wins}`);
+  const obsRows = Math.max(0, tabs.observations.getLastRow() - 1);
+  const trackingRows = Math.max(0, tabs.tracking.getLastRow() - 1);
+  Logger.log(`Rows: observations=${obsRows}, tracking=${trackingRows}`);
 
-  if (counts.training > 0) {
-    const verdicts = tabs.training.getRange(2, 6, counts.training, 1).getValues();
+  if (obsRows > 0) {
+    const data = tabs.observations.getDataRange().getValues();
+    const col = observationsColMap_();
+    const states = {};
+    const sources = {};
     let keep = 0, trash = 0;
-    verdicts.forEach(([v]) => { if (v === VERDICT_KEEP) keep++; else if (v === VERDICT_TRASH) trash++; });
-    Logger.log(`Training split: ${keep} keep / ${trash} trash`);
+    for (let i = 1; i < data.length; i++) {
+      const r = data[i];
+      states[r[col.state]] = (states[r[col.state]] || 0) + 1;
+      if (r[col.truthSource]) sources[r[col.truthSource]] = (sources[r[col.truthSource]] || 0) + 1;
+      if (r[col.state] !== OBS_STATE_PENDING && r[col.state] !== OBS_STATE_EXPIRED) {
+        if (r[col.truthVerdict] === VERDICT_KEEP) keep++;
+        else if (r[col.truthVerdict] === VERDICT_TRASH) trash++;
+      }
+    }
+    Logger.log('States: ' + JSON.stringify(states));
+    Logger.log('Truth sources: ' + JSON.stringify(sources));
+    Logger.log(`Settled split: ${keep} keep / ${trash} trash`);
     const min = CLASSIFIER_MIN_EXAMPLES_PER_CLASS;
-    if (keep < min || trash < min) Logger.log(`⚠ Cold start: classifier abstains until ${min} keep + ${min} trash`);
+    if (keep < min || trash < min) Logger.log(`⚠ Cold start: classifier abstains until ${min} keep + ${min} trash. Run seedObservations() once.`);
     else Logger.log('✓ Classifier has enough training examples');
   } else {
-    Logger.log('⚠ Training tab empty: classifier will abstain on all runs');
+    Logger.log('⚠ Observations tab empty: classifier will abstain. Run seedObservations() once to bootstrap.');
   }
 
-  if (counts.tracking > 0) {
-    const types = tabs.tracking.getRange(2, 2, counts.tracking, 1).getValues();
+  if (trackingRows > 0) {
+    const types = tabs.tracking.getRange(2, 2, trackingRows, 1).getValues();
     const byType = {};
     types.forEach(([t]) => { byType[t] = (byType[t] || 0) + 1; });
     Logger.log('Tracking by type: ' + JSON.stringify(byType));
-  }
-
-  if (counts.decisions > 0) {
-    const lastTs = tabs.decisions.getRange(counts.decisions + 1, 1).getValue();
-    Logger.log('Latest Decisions row: ' + lastTs);
   }
 
   const apiKey = PropertiesService.getScriptProperties().getProperty(PROPS.GEMINI_API_KEY);
@@ -88,8 +92,7 @@ function addClassifierMenu() {
     .addItem('Run cleanUp now', TRIGGER_CLEANUP_HANDLER)
     .addItem('Run cleanUpDeep now', TRIGGER_CLEANUP_DEEP_HANDLER)
     .addSeparator()
-    .addItem('Bootstrap training', 'bootstrapTraining')
-    .addItem('Clean legacy pretrash labels', 'cleanPretrashLegacyLabels')
+    .addItem('Seed observations', 'seedObservations')
     .addSeparator()
     .addItem('Re-run install', 'install')
     .addToUi();

@@ -1,5 +1,5 @@
 /*
-Asks Gemini whether to keep or trash, using your past corrections as examples.
+Asks Gemini whether to keep or trash, using settled observations as few-shot examples.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
@@ -35,7 +35,7 @@ function classifyBatch_(features, examples, apiKey) {
 }
 
 function buildPrompt_(features, examples) {
-  const intent = 'These emails are currently flagged as important by Gmail. Decide if each should genuinely be kept ("keep") or actually trashed ("trash").';
+  const intent = 'These emails currently sit in Gmail with Gmail\'s importance flag set. Decide if each should genuinely be kept ("keep") or actually trashed ("trash") based on the user\'s observed behavior in the examples below.';
 
   const keepLines = examples.keep.slice(0, CLASSIFIER_FEWSHOT_PER_CLASS)
     .map(e => `KEEP | From: ${e.sender} | Subject: ${e.subject} | ${e.snippet}`).join('\n');
@@ -62,18 +62,40 @@ Emails:
 ${itemsText}`;
 }
 
+// Two-pass loader: corrected user actions first (highest signal), then confirmations (silence past
+// the flip window), then seed rows. Each pass walks newest-first and stops once both classes hit
+// quota. Keeps real user signal in the few-shot window even when confirmations dominate by volume.
 function loadFewShotExamples_() {
   if (_examplesCache) return _examplesCache;
-  const data = getClassifierTabs().training.getDataRange().getValues();
+  const sheet = getClassifierTabs().observations;
+  const data = sheet.getDataRange().getValues();
+  const col = observationsColMap_();
+  const quota = CLASSIFIER_FEWSHOT_PER_CLASS;
   const keep = [];
   const trash = [];
-  for (let i = data.length - 1; i >= 1; i--) {
-    const [, , sender, subject, snippet, verdict] = data[i];
-    const entry = { sender, subject, snippet };
-    if (verdict === VERDICT_KEEP && keep.length < CLASSIFIER_FEWSHOT_PER_CLASS) keep.push(entry);
-    else if (verdict === VERDICT_TRASH && trash.length < CLASSIFIER_FEWSHOT_PER_CLASS) trash.push(entry);
-    if (keep.length >= CLASSIFIER_FEWSHOT_PER_CLASS && trash.length >= CLASSIFIER_FEWSHOT_PER_CLASS) break;
+
+  const corrected = new Set([
+    TRUTH_SOURCE_USER_FLIP,
+    TRUTH_SOURCE_USER_SALVAGE,
+    TRUTH_SOURCE_USER_STAR_PIN,
+    TRUTH_SOURCE_USER_BURNDOWN_REPLY
+  ]);
+  const tier = src => corrected.has(src) ? 0 : src === TRUTH_SOURCE_GMAIL_HELD ? 1 : 2;
+
+  for (let pass = 0; pass <= 2; pass++) {
+    if (keep.length >= quota && trash.length >= quota) break;
+    for (let i = data.length - 1; i >= 1; i--) {
+      const r = data[i];
+      if (r[col.state] === OBS_STATE_PENDING || r[col.state] === OBS_STATE_EXPIRED) continue;
+      if (tier(r[col.truthSource]) !== pass) continue;
+      const entry = { sender: r[col.sender], subject: r[col.subject], snippet: r[col.snippet] };
+      const verdict = r[col.truthVerdict];
+      if (verdict === VERDICT_KEEP && keep.length < quota) keep.push(entry);
+      else if (verdict === VERDICT_TRASH && trash.length < quota) trash.push(entry);
+      if (keep.length >= quota && trash.length >= quota) break;
+    }
   }
+
   _examplesCache = { keep, trash };
   return _examplesCache;
 }

@@ -50,12 +50,11 @@ function getOrCreateClassifierSheet() {
     Logger.log('Created classifier sheet: ' + ss.getUrl());
   }
   if (ss.getName() !== name) ss.rename(name);
-  ensureSheet_(ss, SHEET_TAB_TRAINING, TRAINING_HEADERS);
+  ensureSheet_(ss, SHEET_TAB_OBSERVATIONS, OBSERVATIONS_HEADERS);
   ensureSheet_(ss, SHEET_TAB_TRACKING, TRACKING_HEADERS);
-  ensureSheet_(ss, SHEET_TAB_DECISIONS, DECISIONS_HEADERS);
-  ensureSheet_(ss, SHEET_TAB_WINS, WINS_HEADERS);
+  ensureSheet_(ss, SHEET_TAB_SCOREBOARD, SCOREBOARD_HEADERS);
   if (_spreadsheetFreshlyCreated) {
-    const ourTabs = [SHEET_TAB_TRAINING, SHEET_TAB_TRACKING, SHEET_TAB_DECISIONS, SHEET_TAB_WINS];
+    const ourTabs = [SHEET_TAB_OBSERVATIONS, SHEET_TAB_TRACKING, SHEET_TAB_SCOREBOARD];
     ss.getSheets().forEach(s => { if (!ourTabs.includes(s.getName())) ss.deleteSheet(s); });
   }
   _classifierSheetCache = ss;
@@ -87,10 +86,9 @@ function getClassifierTabs() {
   if (_classifierTabsCache) return _classifierTabsCache;
   const ss = getOrCreateClassifierSheet();
   _classifierTabsCache = {
-    training: ss.getSheetByName(SHEET_TAB_TRAINING),
-    tracking: ss.getSheetByName(SHEET_TAB_TRACKING),
-    decisions: ss.getSheetByName(SHEET_TAB_DECISIONS),
-    wins: ss.getSheetByName(SHEET_TAB_WINS)
+    observations: ss.getSheetByName(SHEET_TAB_OBSERVATIONS),
+    tracking:     ss.getSheetByName(SHEET_TAB_TRACKING),
+    scoreboard:   ss.getSheetByName(SHEET_TAB_SCOREBOARD)
   };
   return _classifierTabsCache;
 }
@@ -98,11 +96,16 @@ function getClassifierTabs() {
 function validate() {
   const ss = getOrCreateClassifierSheet();
   [
-    { tab: SHEET_TAB_TRAINING,  headers: TRAINING_HEADERS },
-    { tab: SHEET_TAB_TRACKING,  headers: TRACKING_HEADERS },
-    { tab: SHEET_TAB_DECISIONS, headers: DECISIONS_HEADERS },
-    { tab: SHEET_TAB_WINS,      headers: WINS_HEADERS }
+    { tab: SHEET_TAB_OBSERVATIONS, headers: OBSERVATIONS_HEADERS },
+    { tab: SHEET_TAB_TRACKING,     headers: TRACKING_HEADERS },
+    { tab: SHEET_TAB_SCOREBOARD,   headers: SCOREBOARD_HEADERS }
   ].forEach(s => migrateTab_(ss, s.tab, s.headers));
+
+  // Sweep any legacy tabs from prior schema. We chose start-fresh; surfacing them here lets the
+  // user decide whether to drop or archive them manually (we don't auto-delete user data).
+  const knownTabs = new Set([SHEET_TAB_OBSERVATIONS, SHEET_TAB_TRACKING, SHEET_TAB_SCOREBOARD]);
+  const legacy = ss.getSheets().map(s => s.getName()).filter(n => !knownTabs.has(n));
+  if (legacy.length > 0) Logger.log('⚠ Legacy tabs present (safe to delete manually): ' + legacy.join(', '));
 }
 
 function migrateTab_(ss, tabName, expectedHeaders) {

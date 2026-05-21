@@ -29,7 +29,7 @@ function archiveInbox() {
 }
 
 function ping() {
-  const pinged = buildTrackingIndex(getTrackingValues_())[TRACKING_TYPE_PINGED];
+  const pinged = buildSimpleTrackingIndex_(TRACKING_TYPE_PINGED);
   const threads = GmailApp.search('is:read older_than:' + PING_PICKUP_DAYS + 'd newer_than:' + PING_EXPIRE_DAYS + 'd -from:me -label:done -label:pinned -label:snoozed -label:"' + LABEL_PING + '" -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_AUTOREPLY + '" -label:"' + LABEL_STASH + '" -in:trash');
   const candidates = threads.filter(t => t.getMessageCount() === 1 && !pinged[t.getId()]);
   if (candidates.length === 0) return;
@@ -43,7 +43,7 @@ function ping() {
 function syncManualPings_() {
   // Detects threads the user labeled ↩️ themselves and treats them like an auto-ping.
   // If the thread also carries 🗑️, strip pretrash: applying ↩️ is a stronger salvage signal.
-  const pinged = buildTrackingIndex(getTrackingValues_())[TRACKING_TYPE_PINGED];
+  const pinged = buildSimpleTrackingIndex_(TRACKING_TYPE_PINGED);
   const threads = GmailApp.search('label:"' + LABEL_PING + '" -in:trash');
   const untracked = threads.filter(t => !pinged[t.getId()]);
   if (untracked.length === 0) return;
@@ -69,7 +69,7 @@ function archiveDismissedPings_() {
   // Dismissal contract: the user removes the ↩️ label to dismiss a ping. We never strip the label
   // ourselves; its absence is the gesture. Tracking row stays after dismissal as a permanent
   // "already pinged" marker so ping() won't resurface the same thread twice.
-  const pinged = buildTrackingIndex(getTrackingValues_())[TRACKING_TYPE_PINGED];
+  const pinged = buildSimpleTrackingIndex_(TRACKING_TYPE_PINGED);
   const trackedIds = Object.keys(pinged);
   if (trackedIds.length === 0) return;
 
@@ -95,7 +95,7 @@ function archiveDismissedPings_() {
 }
 
 function archiveStalePings_() {
-  // Passive dismissal: a pinged thread that aged past PING_MAX_AGE_DAYS without you acting.
+  // Passive dismissal: a pinged thread that aged past PING_EXPIRE_DAYS without you acting.
   // Remove ping and riff labels so the thread is fully reset.
   const threads = GmailApp.search('label:"' + LABEL_PING + '" in:inbox older_than:' + PING_EXPIRE_DAYS + 'd');
   if (threads.length === 0) return;
@@ -132,19 +132,7 @@ function preTrashLowPriority() {
   getOrCreateUserLabel(LABEL_PRETRASH).addToThreads(threads);
   GmailApp.moveThreadsToArchive(threads);
   stripAllLabelsExcept(threads, [LABEL_PRETRASH]);
-  safely_('trackPretrashedBatch', () => trackPretrashedBatch(threads.map(t => t.getId())));
-}
-
-function cleanPretrashLegacyLabels() {
-  // One-shot, bucketed: enforce pretrash-only label on legacy pretrashed threads.
-  // Re-run until the log shows 0.
-  const threads = GmailApp.search('label:' + LABEL_PRETRASH, 0, MAX_THREADS_TAG);
-  if (threads.length === 0) {
-    Logger.log('No pretrashed threads with stale labels left.');
-    return;
-  }
-  Logger.log('Stripping all non-pretrash labels from ' + threads.length + ' pretrashed threads.');
-  stripAllLabelsExcept(threads, [LABEL_PRETRASH]);
+  safely_('recordPretrashObservations', () => recordPretrashObservations(threads));
 }
 
 function deleteOlder() {
@@ -170,4 +158,3 @@ function markTrashAsUnimportant() {
   markCleaned_();
   GmailApp.markThreadsUnimportant(threads);
 }
-
