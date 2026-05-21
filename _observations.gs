@@ -237,18 +237,23 @@ function seedObservations() {
     }
   }
   const important = GmailApp.search('is:important', 0, BOOTSTRAP_SAMPLE_SIZE);
-  const unimportant = GmailApp.search('is:unimportant', 0, BOOTSTRAP_SAMPLE_SIZE);
+  const unimportant = GmailApp.search('is:unimportant -label:' + LABEL_PRETRASH, 0, BOOTSTRAP_SAMPLE_SIZE);
+  const pretrashed = GmailApp.search('label:' + LABEL_PRETRASH, 0, BOOTSTRAP_SAMPLE_SIZE);
   const rows = [];
-  seedThreads_(important, VERDICT_KEEP, rows);
-  seedThreads_(unimportant, VERDICT_TRASH, rows);
+  seedThreads_(important,   VERDICT_KEEP,  false, rows);
+  seedThreads_(unimportant, VERDICT_TRASH, false, rows);
+  seedThreads_(pretrashed,  VERDICT_TRASH, true,  rows);
   if (rows.length > 0) {
     appendRowsBatch(tabs.observations, rows);
     invalidateObservationsCache_();
   }
-  Logger.log('🌱 Seeded ' + rows.length + ' observations (' + important.length + ' keep, ' + unimportant.length + ' trash).');
+  Logger.log('🌱 Seeded ' + rows.length + ' observations ('
+    + important.length + ' keep, '
+    + unimportant.length + ' trash, '
+    + pretrashed.length + ' pretrash).');
 }
 
-function seedThreads_(threads, gmailVerdict, outRows) {
+function seedThreads_(threads, gmailVerdict, pretrashed, outRows) {
   if (!threads || threads.length === 0) return;
   const features = buildThreadFeatures(threads);
   const observedAt = new Date().toISOString();
@@ -256,7 +261,7 @@ function seedThreads_(threads, gmailVerdict, outRows) {
     const row = newObservationRow_({
       threadId: f.id, observedAt,
       sender: f.sender, subject: f.subject, snippet: f.snippet,
-      gmailVerdict, pretrashed: false
+      gmailVerdict, pretrashed
     });
     setSettled_(row, gmailVerdict, TRUTH_SOURCE_SEED, observedAt, OBS_STATE_CONFIRMED);
     outRows.push(row);

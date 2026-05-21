@@ -78,6 +78,7 @@ Pretrash rows use `PRETRASH_AGE_DAYS` as their settle window (not `FLIP_WINDOW_H
 - Ping is one-shot per thread. Tracking row is permanent.
 - Manually applied ↩️ is treated like an auto-ping (moved to inbox, tracked).
 - If ↩️ is applied to a pretrashed thread (🗑️), the 🗑️ is stripped (salvage override).
+- If a 🗑️ thread becomes starred, important, replied-to (`from:me`), or labeled 🦾, the 🗑️ is stripped on the next cleanUp.
 - Script archives a thread when its ↩️ label is removed.
 - Stale pings (older than PING_EXPIRE_DAYS) archive passively.
 - Script drafts a reply on 🦾-labeled threads using up to VOICE_EXAMPLES_MAX sent emails labeled 🫵 as few-shot.

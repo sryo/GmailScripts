@@ -8,6 +8,7 @@ function cleanUp() {
 
   markDoneAsRead();
   markPinnedAsImportant();
+  salvagePretrashOnSignals_();
   deleteOlder();
   preTrashLowPriority();
   markTrashAsUnimportant();
@@ -38,6 +39,16 @@ function ping() {
   getOrCreateUserLabel(LABEL_PING).addToThreads(candidates);
   getOrCreateUserLabel(LABEL_AUTOREPLY).addToThreads(candidates);
   applyPingTo_(candidates);
+}
+
+function salvagePretrashOnSignals_() {
+  // Documented contract (AGENTS.md): star, important, reply, 🦾, ↩️ all signal KEEP.
+  // Strip 🗑️ as soon as any of those appear so deleteOlder doesn't trash a thread the user revived.
+  const threads = GmailApp.search('label:' + LABEL_PRETRASH + ' (is:starred OR is:important OR from:me OR label:"' + LABEL_AUTOREPLY + '" OR label:"' + LABEL_PING + '")');
+  if (threads.length === 0) return;
+  Logger.log(LABEL_PRETRASH + ' Salvaging ' + threads.length + ' pretrashed threads with KEEP signals.');
+  markCleaned_();
+  removeLabelIfExists_(LABEL_PRETRASH, threads);
 }
 
 function syncManualPings_() {
@@ -124,7 +135,7 @@ function markDoneAsRead() {
 }
 
 function preTrashLowPriority() {
-  const threads = GmailApp.search('-label:' + LABEL_PRETRASH + ' AND (label:low_priority OR label:promos OR category:updates) -is:important -label:pinned -label:snoozed -label:done');
+  const threads = GmailApp.search('-label:' + LABEL_PRETRASH + ' AND (label:low_priority OR label:promos OR category:updates) -is:important -label:pinned -label:snoozed -label:done -is:starred -from:me');
   if (threads.length === 0) return;
   Logger.log(LABEL_PRETRASH + ' Pretrashing ' + threads.length + ' low-priority threads.');
   markCleaned_();
