@@ -31,7 +31,7 @@ function archiveInbox() {
 
 function ping() {
   const pinged = buildSimpleTrackingIndex_(TRACKING_TYPE_PINGED);
-  const threads = GmailApp.search('is:read older_than:' + PING_PICKUP_DAYS + 'd newer_than:' + PING_EXPIRE_DAYS + 'd -label:sent -label:done -label:pinned -label:snoozed -label:"' + LABEL_PING + '" -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_AUTOREPLY + '" -label:"' + LABEL_STASH + '" -in:trash');
+  const threads = GmailApp.search('is:read older_than:' + PING_PICKUP_DAYS + 'd newer_than:' + PING_EXPIRE_DAYS + 'd -label:sent -label:done -label:pinned -label:snoozed -label:"' + LABEL_PING + '" -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_AUTOREPLY + '" -label:"' + LABEL_STASH + '" -label:"' + LABEL_VOICE + '" -in:trash');
   const candidates = threads.filter(t => t.getMessageCount() === 1 && !pinged[t.getId()]);
   if (candidates.length === 0) return;
   Logger.log(LABEL_PING + ' Pinging ' + candidates.length + ' forgotten reads.');
@@ -90,25 +90,12 @@ function applyPingTo_(threads) {
 function archiveDismissedPings_() {
   // Dismissal contract: the user removes the ↩️ label to dismiss a ping. We never strip the label
   // ourselves; its absence is the gesture. Tracking row stays after dismissal as a permanent
-  // "already pinged" marker so ping() won't resurface the same thread twice.
+  // "already pinged" marker so ping() won't resurface the same thread twice. Iterate the bounded
+  // inbox search (Gmail caps at 500), not the ever-growing tracked-ID map.
   const pinged = buildSimpleTrackingIndex_(TRACKING_TYPE_PINGED);
-  const trackedIds = Object.keys(pinged);
-  if (trackedIds.length === 0) return;
-
-  const stillPinged = new Set();
-  GmailApp.search('label:"' + LABEL_PING + '"').forEach(t => stillPinged.add(t.getId()));
-
-  const dismissedIds = trackedIds.filter(id => !stillPinged.has(id));
-  if (dismissedIds.length === 0) return;
-
-  const toArchive = [];
-  dismissedIds.forEach(id => {
-    try {
-      const t = GmailApp.getThreadById(id);
-      if (t && !t.isInTrash()) toArchive.push(t);
-    } catch (e) { /* thread gone, tracking stays as permanent marker */ }
-  });
-
+  if (Object.keys(pinged).length === 0) return;
+  const inboxThreads = GmailApp.search('in:inbox -label:"' + LABEL_PING + '"');
+  const toArchive = inboxThreads.filter(t => pinged[t.getId()] && !t.isInTrash());
   if (toArchive.length === 0) return;
   Logger.log('📦 Archiving ' + toArchive.length + ' dismissed pings.');
   markCleaned_();
@@ -146,7 +133,7 @@ function markDoneAsRead() {
 }
 
 function preTrashLowPriority() {
-  const threads = GmailApp.search('-label:' + LABEL_PRETRASH + ' AND (label:low_priority OR label:promos OR category:updates) -is:important -label:pinned -label:snoozed -label:done -is:starred -label:sent -label:"' + LABEL_AUTOREPLY + '" -label:"' + LABEL_PING + '"');
+  const threads = GmailApp.search('-label:' + LABEL_PRETRASH + ' AND (label:low_priority OR label:promos OR category:updates) -is:important -label:pinned -label:snoozed -label:done -is:starred -label:sent -label:"' + LABEL_AUTOREPLY + '" -label:"' + LABEL_PING + '" -label:"' + LABEL_VOICE + '"');
   if (threads.length === 0) return;
   Logger.log(LABEL_PRETRASH + ' Pretrashing ' + threads.length + ' low-priority threads.');
   markCleaned_();

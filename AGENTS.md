@@ -49,6 +49,7 @@ labels. Manual gestures the system reads as signal:
 - Apply **↩️** = reply later; thread returns to Hot and is tracked like an auto-ping.
 - Remove **↩️** = dismiss a ping; the thread should be archived.
 - Apply **🦾** = draft me a reply via LLM. Stays on the thread until the draft is sent or deleted.
+- Apply **🫵** = voice corpus *and* hands-off marker: thread is excluded from auto-ping and auto-pretrash. The drafter still pulls 🫵-labeled sent emails as voice examples.
 
 Silence past `FLIP_WINDOW_HOURS` (72h) counts as confirmation of Gmail's call (gmail_held).
 

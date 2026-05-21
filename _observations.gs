@@ -31,11 +31,19 @@ function observePass() {
 }
 
 // Called from preTrashLowPriority (cleanUp.gs). Pretrash is a stronger trash signal than
-// is:unimportant alone, with a longer settle window (PRETRASH_AGE_DAYS) — gives the user time
+// is:unimportant alone, with a longer settle window (PRETRASH_AGE_DAYS), giving the user time
 // to salvage. Each pretrash action creates its own observation epoch.
+// Also pre-settles any pending non-pretrash trash row for the same thread as gmail_held: the
+// pretrash supersedes it and waiting 72h on the old row would just produce the same verdict.
 function recordPretrashObservations(threads) {
   if (!threads || threads.length === 0) return;
   const tabs = getClassifierTabs();
+  const preSettled = settlePendingForThreads_(
+    threads.map(t => t.getId()),
+    VERDICT_TRASH, TRUTH_SOURCE_GMAIL_HELD, OBS_STATE_CONFIRMED,
+    (row, col) => row[col.gmailVerdict] === VERDICT_TRASH && !cellBool_(row[col.pretrashed])
+  );
+  if (preSettled > 0) Logger.log('⚖ Pre-settled ' + preSettled + ' superseded observations on pretrash.');
   const known = loadObservationsIndex_(tabs.observations);
   const newRows = [];
   recordNewObservations_(threads, VERDICT_TRASH, true, known, newRows);
@@ -43,6 +51,29 @@ function recordPretrashObservations(threads) {
     appendRowsBatch(tabs.observations, newRows);
     invalidateObservationsCache_();
   }
+}
+
+// Bulk-settles all pending observation rows whose threadId is in `threadIds` and (optionally)
+// satisfy `extraFilter(row, col)`. Used to short-circuit the settle window when a stronger signal
+// arrives (burndown reply, pretrash superseding a non-pretrash row).
+function settlePendingForThreads_(threadIds, verdict, source, state, extraFilter) {
+  if (!threadIds || threadIds.length === 0) return 0;
+  const tabs = getClassifierTabs();
+  const { data, col } = readObservations_(tabs.observations);
+  if (data.length < 2) return 0;
+  const ids = threadIds instanceof Set ? threadIds : new Set(threadIds);
+  const nowIso = new Date().toISOString();
+  const updates = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[col.state] !== OBS_STATE_PENDING) continue;
+    if (!ids.has(row[col.threadId])) continue;
+    if (extraFilter && !extraFilter(row, col)) continue;
+    setSettled_(row, verdict, source, nowIso, state);
+    updates.push({ rowNum: i + 1, row });
+  }
+  if (updates.length > 0) applyObservationUpdates_(tabs.observations, updates);
+  return updates.length;
 }
 
 // Creates a fresh row only if no pending row already covers this (threadId, gmailVerdict, pretrashed)
@@ -152,26 +183,11 @@ function settlePass() {
   if (updates.length > 0) Logger.log('⚖ Settled ' + updates.length + ' observations.');
 }
 
-// Called by burndown when a user reply is parsed for a thread: any pending observation for that
-// thread is the strongest possible KEEP signal (the user wrote prose back). Idempotent — settles
-// at most one row per thread per call.
+// Called by burndown when a user reply is parsed for a thread. Any pending observation for that
+// thread is the strongest possible KEEP signal (the user wrote prose back).
 function settleBurndownReplied(threadIds) {
-  if (!threadIds || threadIds.length === 0) return;
-  const tabs = getClassifierTabs();
-  const { data, col } = readObservations_(tabs.observations);
-  if (data.length < 2) return;
-  const targets = new Set(threadIds);
-  const nowIso = new Date().toISOString();
-  const updates = [];
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    if (row[col.state] !== OBS_STATE_PENDING) continue;
-    if (!targets.has(row[col.threadId])) continue;
-    setSettled_(row, VERDICT_KEEP, TRUTH_SOURCE_USER_BURNDOWN_REPLY, nowIso, OBS_STATE_CORRECTED);
-    updates.push({ rowNum: i + 1, row });
-  }
-  applyObservationUpdates_(tabs.observations, updates);
-  if (updates.length > 0) Logger.log('🔥 Burndown reply settled ' + updates.length + ' observations.');
+  const n = settlePendingForThreads_(threadIds, VERDICT_KEEP, TRUTH_SOURCE_USER_BURNDOWN_REPLY, OBS_STATE_CORRECTED);
+  if (n > 0) Logger.log('🔥 Burndown reply settled ' + n + ' observations.');
 }
 
 function settleOne_(row, thread, observedAt, now, col) {
