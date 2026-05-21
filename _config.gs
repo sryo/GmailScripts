@@ -125,11 +125,13 @@ const TRIGGER_CLEANUP_MIN = 5;
 const TRIGGER_CLEANUP_DEEP_MIN = 15;
 const TRIGGER_BUNCH_MIN = 5;
 const TRIGGER_REMOVE_EMPTY_LABELS_MIN = 30;
+const TRIGGER_DAILY_MAINTENANCE_HOUR = 4;
 const TRIGGER_CLEANUP_HANDLER = 'cleanUp';
 const TRIGGER_CLEANUP_DEEP_HANDLER = 'cleanUpDeep';
 const TRIGGER_BUNCH_HANDLER = 'bunch';
 const TRIGGER_REMOVE_EMPTY_LABELS_HANDLER = 'removeEmptyLabels';
 const TRIGGER_BURNDOWN_HANDLER = 'sendBurndown';
+const TRIGGER_DAILY_MAINTENANCE_HANDLER = 'dailyMaintenance';
 const MENU_HANDLER = 'addClassifierMenu';
 
 const REPLY_PROMPT = (ctx, voiceBlock, messagesBlock) => `You draft a concise email reply on behalf of ${ctx.userEmail}.

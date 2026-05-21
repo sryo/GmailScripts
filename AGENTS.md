@@ -28,10 +28,13 @@ self-running system, not an admin task.
 - `bunch`: every 5 min.
 - `removeEmptyLabels`: every 30 min.
 - `sendBurndown`: daily at `BURNDOWN_HOUR`.
+- `dailyMaintenance`: daily at `TRIGGER_DAILY_MAINTENANCE_HOUR`. Retention + scoreboard.
 
 Routines inside `cleanUp`: `markDoneAsRead`, `markPinnedAsImportant`, `deleteOlder`, `preTrashLowPriority`, `markTrashAsUnimportant`, `archiveDismissedPings_`, `archiveStalePings_`, `ping`, `syncManualPings_`, `stash`, `archiveInbox`.
 
-Routines inside `cleanUpDeep`: `observePass`, `predictPass`, `settlePass`, `applyClassifierActions`, `pruneObservations_`, `rebuildScoreboard`, `riff`, `processBurndownReplies_`.
+Routines inside `cleanUpDeep`: `observePass`, `predictPass`, `settlePass`, `applyClassifierActions`, `riff`, `processBurndownReplies_`.
+
+Routines inside `dailyMaintenance`: `pruneObservations_`, `pruneTracking_`, `rebuildScoreboard`.
 
 After changing any `TRIGGER_*_MIN` constant, re-run `install` (it always recreates triggers).
 

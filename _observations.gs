@@ -25,7 +25,7 @@ function observePass() {
   recordNewObservations_(unimportantThreads, VERDICT_TRASH, false, known, newRows);
   if (newRows.length > 0) {
     appendRowsBatch(tabs.observations, newRows);
-    _observationsCache = null;
+    invalidateObservationsCache_();
     Logger.log('🔭 Observed ' + newRows.length + ' new thread states.');
   }
 }
@@ -41,7 +41,7 @@ function recordPretrashObservations(threads) {
   recordNewObservations_(threads, VERDICT_TRASH, true, known, newRows);
   if (newRows.length > 0) {
     appendRowsBatch(tabs.observations, newRows);
-    _observationsCache = null;
+    invalidateObservationsCache_();
   }
 }
 
@@ -50,20 +50,20 @@ function recordPretrashObservations(threads) {
 // state next changes (which is the real signal).
 function recordNewObservations_(threads, gmailVerdict, pretrashed, known, outRows) {
   if (!threads || threads.length === 0) return;
-  const features = buildThreadFeatures(threads);
   const messagesByThread = GmailApp.getMessagesForThreads(threads);
   const now = Date.now();
   const windowMs = (pretrashed ? PRETRASH_AGE_DAYS * 24 : FLIP_WINDOW_HOURS) * 3600 * 1000;
-  features.forEach((f, i) => {
+  threads.forEach((t, i) => {
+    const msgs = messagesByThread[i];
+    if (!msgs || msgs.length === 0) return;
+    const f = extractThreadFeatures(t, msgs[0]);
     const key = obsKey_(f.id, gmailVerdict, pretrashed);
     if (known.pending[key] || known.recent[key]) return;
     // Heuristic settle: if the thread has been in this state long enough that the flip window
     // already would have closed, mark it confirmed immediately — gives us training data on day one
-    // instead of waiting 72h. New activity will create a new observation epoch on the next pass.
-    const lastDate = messagesByThread[i] && messagesByThread[i].length > 0
-      ? messagesByThread[i][messagesByThread[i].length - 1].getDate().getTime()
-      : 0;
-    const settledAlready = lastDate > 0 && (now - lastDate) > windowMs;
+    // instead of waiting 72h. New activity creates a new observation epoch on the next pass.
+    const lastDate = msgs[msgs.length - 1].getDate().getTime();
+    const settledAlready = (now - lastDate) > windowMs;
     const observedAt = new Date(now).toISOString();
     const row = newObservationRow_({
       threadId: f.id, observedAt,
@@ -176,25 +176,28 @@ function settleBurndownReplied(threadIds) {
 
 function settleOne_(row, thread, observedAt, now, col) {
   const gmailVerdict = row[col.gmailVerdict];
-  const pretrashed = row[col.pretrashed] === true || row[col.pretrashed] === 'TRUE';
-  const llmActed = row[col.llmActed] === true || row[col.llmActed] === 'TRUE';
+  const pretrashed = cellBool_(row[col.pretrashed]);
+  const llmActed = cellBool_(row[col.llmActed]);
   const windowMs = (pretrashed ? PRETRASH_AGE_DAYS * 24 : FLIP_WINDOW_HOURS) * 3600 * 1000;
   const nowIso = new Date(now).toISOString();
   const labels = thread.getLabels().map(l => l.getName());
 
   if (thread.hasStarredMessages() || labels.indexOf('pinned') >= 0 || labels.indexOf('snoozed') >= 0) {
     const state = (gmailVerdict === VERDICT_KEEP) ? OBS_STATE_CONFIRMED : OBS_STATE_CORRECTED;
-    return setSettled_(row, VERDICT_KEEP, TRUTH_SOURCE_USER_STAR_PIN, nowIso, state) || true;
+    setSettled_(row, VERDICT_KEEP, TRUTH_SOURCE_USER_STAR_PIN, nowIso, state);
+    return true;
   }
 
   if (pretrashed) {
     const stillPretrashed = labels.indexOf(LABEL_PRETRASH) >= 0;
     if (!stillPretrashed && !thread.isInTrash()) {
-      return setSettled_(row, VERDICT_KEEP, TRUTH_SOURCE_USER_SALVAGE, nowIso, OBS_STATE_CORRECTED) || true;
+      setSettled_(row, VERDICT_KEEP, TRUTH_SOURCE_USER_SALVAGE, nowIso, OBS_STATE_CORRECTED);
+      return true;
     }
     if (thread.isInTrash() || now - observedAt > windowMs) {
       // User manually trashed early, or the 20-day pretrash window elapsed — either way, Gmail's call held.
-      return setSettled_(row, VERDICT_TRASH, TRUTH_SOURCE_GMAIL_HELD, nowIso, OBS_STATE_CONFIRMED) || true;
+      setSettled_(row, VERDICT_TRASH, TRUTH_SOURCE_GMAIL_HELD, nowIso, OBS_STATE_CONFIRMED);
+      return true;
     }
     return false;
   }
@@ -204,15 +207,18 @@ function settleOne_(row, thread, observedAt, now, col) {
   const inTrash = thread.isInTrash();
   if (!llmActed) {
     if (gmailVerdict === VERDICT_KEEP && (!currentIsImportant || inTrash)) {
-      return setSettled_(row, VERDICT_TRASH, TRUTH_SOURCE_USER_FLIP, nowIso, OBS_STATE_CORRECTED) || true;
+      setSettled_(row, VERDICT_TRASH, TRUTH_SOURCE_USER_FLIP, nowIso, OBS_STATE_CORRECTED);
+      return true;
     }
     if (gmailVerdict === VERDICT_TRASH && currentIsImportant && !inTrash) {
-      return setSettled_(row, VERDICT_KEEP, TRUTH_SOURCE_USER_FLIP, nowIso, OBS_STATE_CORRECTED) || true;
+      setSettled_(row, VERDICT_KEEP, TRUTH_SOURCE_USER_FLIP, nowIso, OBS_STATE_CORRECTED);
+      return true;
     }
   }
 
   if (now - observedAt > windowMs) {
-    return setSettled_(row, gmailVerdict, TRUTH_SOURCE_GMAIL_HELD, nowIso, OBS_STATE_CONFIRMED) || true;
+    setSettled_(row, gmailVerdict, TRUTH_SOURCE_GMAIL_HELD, nowIso, OBS_STATE_CONFIRMED);
+    return true;
   }
   return false;
 }
@@ -237,7 +243,7 @@ function seedObservations() {
   seedThreads_(unimportant, VERDICT_TRASH, rows);
   if (rows.length > 0) {
     appendRowsBatch(tabs.observations, rows);
-    _observationsCache = null;
+    invalidateObservationsCache_();
   }
   Logger.log('🌱 Seeded ' + rows.length + ' observations (' + important.length + ' keep, ' + unimportant.length + ' trash).');
 }
@@ -274,8 +280,8 @@ function applyClassifierActions() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (row[col.state] !== OBS_STATE_PENDING) continue;
-    if (row[col.pretrashed] === true || row[col.pretrashed] === 'TRUE') continue;
-    if (row[col.llmActed] === true || row[col.llmActed] === 'TRUE') continue;
+    if (cellBool_(row[col.pretrashed])) continue;
+    if (cellBool_(row[col.llmActed])) continue;
     const llmVerdict = row[col.llmVerdict];
     const gmailVerdict = row[col.gmailVerdict];
     if (!llmVerdict || llmVerdict === gmailVerdict) continue;
@@ -332,21 +338,28 @@ function setSettled_(row, truthVerdict, truthSource, settledAt, state) {
   row[col.truthVerdict] = truthVerdict;
   row[col.truthSource] = truthSource;
   row[col.state] = state;
-  return true;
 }
 
 function markExpired_(row) {
   const col = observationsColMap_();
   row[col.settledAt] = new Date().toISOString();
   row[col.state] = OBS_STATE_EXPIRED;
-  return true;
 }
 
+// Sheets cells return a JS boolean after a fresh write but the string 'TRUE' after a manual
+// edit / full re-read. Normalize on read.
+function cellBool_(v) { return v === true || v === 'TRUE'; }
+
+let _observationsColMap;
 function observationsColMap_() {
+  if (_observationsColMap) return _observationsColMap;
   const map = {};
   OBSERVATIONS_HEADERS.forEach((h, i) => { map[h] = i; });
+  _observationsColMap = map;
   return map;
 }
+
+function invalidateObservationsCache_() { _observationsCache = null; }
 
 function readObservations_(sheet) {
   if (!_observationsCache) {
@@ -366,7 +379,7 @@ function loadObservationsIndex_(sheet) {
   for (let i = 1; i < data.length; i++) {
     const r = data[i];
     if (r[col.state] === OBS_STATE_EXPIRED) continue;
-    const key = obsKey_(r[col.threadId], r[col.gmailVerdict], r[col.pretrashed] === true || r[col.pretrashed] === 'TRUE');
+    const key = obsKey_(r[col.threadId], r[col.gmailVerdict], cellBool_(r[col.pretrashed]));
     if (r[col.state] === OBS_STATE_PENDING) pending[key] = i + 1;
     else recent[key] = i + 1;
   }
@@ -375,12 +388,18 @@ function loadObservationsIndex_(sheet) {
 
 function applyObservationUpdates_(sheet, updates) {
   if (!updates || updates.length === 0) return;
-  // Single-row writes — Apps Script batching of arbitrary rows requires range gymnastics;
-  // the row-count here is bounded by SETTLE_BATCH_LIMIT and is fine in practice.
-  updates.forEach(u => {
-    sheet.getRange(u.rowNum, 1, 1, OBSERVATIONS_HEADERS.length).setValues([u.row]);
-  });
-  _observationsCache = null;
+  // Group consecutive row numbers into single setValues calls. settle/predict passes typically
+  // touch contiguous runs of pending rows, so this cuts write ops to a fraction of the row count.
+  const sorted = updates.slice().sort((a, b) => a.rowNum - b.rowNum);
+  let runStart = 0;
+  while (runStart < sorted.length) {
+    let runEnd = runStart;
+    while (runEnd + 1 < sorted.length && sorted[runEnd + 1].rowNum === sorted[runEnd].rowNum + 1) runEnd++;
+    const block = sorted.slice(runStart, runEnd + 1).map(u => u.row);
+    sheet.getRange(sorted[runStart].rowNum, 1, block.length, OBSERVATIONS_HEADERS.length).setValues(block);
+    runStart = runEnd + 1;
+  }
+  invalidateObservationsCache_();
 }
 
 // Drops settled rows older than the retention window. corrected/seed rows stay forever — they are
@@ -399,7 +418,7 @@ function pruneObservations_() {
   }
   if (rowsToDelete.length > 0) {
     deleteRowsReverse(tabs.observations, rowsToDelete);
-    _observationsCache = null;
+    invalidateObservationsCache_();
     Logger.log('🧹 Pruned ' + rowsToDelete.length + ' aged observation rows.');
   }
 }

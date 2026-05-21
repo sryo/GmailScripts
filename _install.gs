@@ -125,7 +125,8 @@ function ensureTriggers_() {
     { fn: TRIGGER_CLEANUP_DEEP_HANDLER,         kind: 'minutes',     value: TRIGGER_CLEANUP_DEEP_MIN },
     { fn: TRIGGER_BUNCH_HANDLER,                kind: 'minutes',     value: TRIGGER_BUNCH_MIN },
     { fn: TRIGGER_REMOVE_EMPTY_LABELS_HANDLER,  kind: 'minutes',     value: TRIGGER_REMOVE_EMPTY_LABELS_MIN },
-    { fn: TRIGGER_BURNDOWN_HANDLER,             kind: 'dailyAtHour', value: BURNDOWN_HOUR }
+    { fn: TRIGGER_BURNDOWN_HANDLER,             kind: 'dailyAtHour', value: BURNDOWN_HOUR },
+    { fn: TRIGGER_DAILY_MAINTENANCE_HANDLER,    kind: 'dailyAtHour', value: TRIGGER_DAILY_MAINTENANCE_HOUR }
   ];
   ScriptApp.getProjectTriggers().forEach(t => {
     if (t.getHandlerFunction() === MENU_HANDLER) return;
