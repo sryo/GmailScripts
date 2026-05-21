@@ -66,7 +66,7 @@ const BURNDOWN_MARKER_PREFIX = '━ thread ';
 const BURNDOWN_TABLE_HEADER_LEFT = 'Mail';
 const BURNDOWN_TABLE_HEADER_RIGHT = 'Your reply';
 const BURNDOWN_REPLY_PROMPT = 'Your reply:';
-const BURNDOWN_QUERY = 'is:important is:unread in:inbox -from:me -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_PUBLIC + '" newer_than:7d';
+const BURNDOWN_QUERY = 'is:important is:unread in:inbox -label:sent -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_PUBLIC + '" newer_than:7d';
 const BURNDOWN_PROCESSED_TTL_DAYS = 14;
 
 // Observation engine config.

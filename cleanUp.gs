@@ -31,7 +31,7 @@ function archiveInbox() {
 
 function ping() {
   const pinged = buildSimpleTrackingIndex_(TRACKING_TYPE_PINGED);
-  const threads = GmailApp.search('is:read older_than:' + PING_PICKUP_DAYS + 'd newer_than:' + PING_EXPIRE_DAYS + 'd -from:me -label:done -label:pinned -label:snoozed -label:"' + LABEL_PING + '" -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_AUTOREPLY + '" -label:"' + LABEL_STASH + '" -in:trash');
+  const threads = GmailApp.search('is:read older_than:' + PING_PICKUP_DAYS + 'd newer_than:' + PING_EXPIRE_DAYS + 'd -label:sent -label:done -label:pinned -label:snoozed -label:"' + LABEL_PING + '" -label:' + LABEL_PRETRASH + ' -label:"' + LABEL_AUTOREPLY + '" -label:"' + LABEL_STASH + '" -in:trash');
   const candidates = threads.filter(t => t.getMessageCount() === 1 && !pinged[t.getId()]);
   if (candidates.length === 0) return;
   Logger.log(LABEL_PING + ' Pinging ' + candidates.length + ' forgotten reads.');
@@ -42,11 +42,22 @@ function ping() {
 }
 
 function salvagePretrashOnSignals_() {
-  // Documented contract (AGENTS.md): star, important, reply, 🦾, ↩️ all signal KEEP.
+  // Documented contract: star, important, reply, 🦾, ↩️ all signal KEEP.
   // Strip 🗑️ as soon as any of those appear so deleteOlder doesn't trash a thread the user revived.
-  const threads = GmailApp.search('label:' + LABEL_PRETRASH + ' (is:starred OR is:important OR from:me OR label:"' + LABEL_AUTOREPLY + '" OR label:"' + LABEL_PING + '")');
+  // label:sent (not from:me) — from:me false-matches forwarded mail from Send-As aliases.
+  const threads = GmailApp.search('label:' + LABEL_PRETRASH + ' (is:starred OR is:important OR label:sent OR label:"' + LABEL_AUTOREPLY + '" OR label:"' + LABEL_PING + '")');
   if (threads.length === 0) return;
   Logger.log(LABEL_PRETRASH + ' Salvaging ' + threads.length + ' pretrashed threads with KEEP signals.');
+  threads.forEach(t => {
+    const reasons = [];
+    const labels = t.getLabels().map(l => l.getName());
+    if (labels.indexOf(LABEL_AUTOREPLY) >= 0) reasons.push('🦾');
+    if (labels.indexOf(LABEL_PING) >= 0) reasons.push('↩️');
+    if (t.isImportant()) reasons.push('important');
+    if (t.getMessages().some(m => m.isStarred())) reasons.push('starred');
+    if (reasons.length === 0) reasons.push('replied');
+    Logger.log('  • [' + reasons.join(',') + '] ' + t.getFirstMessageSubject());
+  });
   markCleaned_();
   removeLabelIfExists_(LABEL_PRETRASH, threads);
 }
@@ -135,7 +146,7 @@ function markDoneAsRead() {
 }
 
 function preTrashLowPriority() {
-  const threads = GmailApp.search('-label:' + LABEL_PRETRASH + ' AND (label:low_priority OR label:promos OR category:updates) -is:important -label:pinned -label:snoozed -label:done -is:starred -from:me');
+  const threads = GmailApp.search('-label:' + LABEL_PRETRASH + ' AND (label:low_priority OR label:promos OR category:updates) -is:important -label:pinned -label:snoozed -label:done -is:starred -label:sent -label:"' + LABEL_AUTOREPLY + '" -label:"' + LABEL_PING + '"');
   if (threads.length === 0) return;
   Logger.log(LABEL_PRETRASH + ' Pretrashing ' + threads.length + ' low-priority threads.');
   markCleaned_();

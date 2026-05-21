@@ -237,19 +237,16 @@ function seedObservations() {
     }
   }
   const important = GmailApp.search('is:important', 0, BOOTSTRAP_SAMPLE_SIZE);
-  const unimportant = GmailApp.search('is:unimportant -label:' + LABEL_PRETRASH, 0, BOOTSTRAP_SAMPLE_SIZE);
   const pretrashed = GmailApp.search('label:' + LABEL_PRETRASH, 0, BOOTSTRAP_SAMPLE_SIZE);
   const rows = [];
-  seedThreads_(important,   VERDICT_KEEP,  false, rows);
-  seedThreads_(unimportant, VERDICT_TRASH, false, rows);
-  seedThreads_(pretrashed,  VERDICT_TRASH, true,  rows);
+  seedThreads_(important,  VERDICT_KEEP,  false, rows);
+  seedThreads_(pretrashed, VERDICT_TRASH, true,  rows);
   if (rows.length > 0) {
     appendRowsBatch(tabs.observations, rows);
     invalidateObservationsCache_();
   }
   Logger.log('🌱 Seeded ' + rows.length + ' observations ('
     + important.length + ' keep, '
-    + unimportant.length + ' trash, '
     + pretrashed.length + ' pretrash).');
 }
 

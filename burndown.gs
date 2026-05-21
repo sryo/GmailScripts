@@ -111,7 +111,7 @@ function processBurndownReplies_() {
   const userEmail = Gmail.Users.getProfile('me').emailAddress;
   const lower = userEmail.toLowerCase();
 
-  const digestThreads = GmailApp.search('subject:"' + BURNDOWN_SUBJECT_PREFIX + '" from:me -in:trash newer_than:14d');
+  const digestThreads = GmailApp.search('subject:"' + BURNDOWN_SUBJECT_PREFIX + '" label:sent -in:trash newer_than:14d');
   if (digestThreads.length === 0) return;
 
   const actedMsgIds = [];

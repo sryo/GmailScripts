@@ -27,7 +27,7 @@ function buildReplyContext_(thread, voiceExamples, userEmail) {
 }
 
 function loadVoiceExamples_(userEmail) {
-  const threads = GmailApp.search('from:me label:"' + LABEL_VOICE + '" -in:trash', 0, VOICE_EXAMPLES_MAX);
+  const threads = GmailApp.search('label:sent label:"' + LABEL_VOICE + '" -in:trash', 0, VOICE_EXAMPLES_MAX);
   if (threads.length === 0) return [];
   const lower = userEmail.toLowerCase();
   const messagesByThread = GmailApp.getMessagesForThreads(threads);
