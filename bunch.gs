@@ -3,7 +3,9 @@ Bunches important threads by sender domain. Sweeps empty user labels.
 Author: Mateo Yadarola (teodalton@gmail.com)
 */
 
-const SENDER_HEADER_FALLBACKS = ['From', 'Sender', 'Reply-To', 'Return-Path'];
+// From/Sender only. Reply-To and Return-Path lie about the actual sender (mailing-list relays,
+// bounce addresses) and produced wrong domain labels when From was missing.
+const SENDER_HEADER_FALLBACKS = ['From', 'Sender'];
 const FALLBACK_SENDER_DOMAIN = 'unknown.sender';
 
 function bunch() {
@@ -34,9 +36,11 @@ function bunch() {
   console.log("Script execution finished.");
 }
 
+// is:unread re-includes already-tagged threads when new mail arrives, so late-joining senders
+// can be labeled. Idempotent: only adds missing domain labels per thread.
 function fetchThreads(pageToken) {
   return Gmail.Users.Threads.list('me', {
-    q: 'is:important has:nouserlabels -label:low_priority -label:promos -category:updates -in:trash',
+    q: 'is:important is:unread -label:low_priority -label:promos -category:updates -in:trash',
     maxResults: MAX_THREADS_TAG,
     pageToken: pageToken
   });
@@ -52,31 +56,29 @@ function processThreads(threads, labelMap) {
       });
       if (!threadDetails || !threadDetails.messages) continue;
 
-      let labeled = false;
+      const existingLabelIds = new Set();
+      const domains = new Set();
       for (const message of threadDetails.messages) {
+        (message.labelIds || []).forEach(id => existingLabelIds.add(id));
         if (!message.payload || !message.payload.headers) continue;
         const sender = getSenderFromHeaders(message.payload.headers);
         if (!sender) continue;
         const domain = extractDomain(sender);
-        if (!domain) {
-          console.log(`Could not extract domain from '${sender}' in thread: ${thread.id}`);
-          continue;
-        }
-        const label = getOrCreateLabelCached(labelMap, domain);
-        Gmail.Users.Threads.modify({ addLabelIds: [label.id] }, 'me', thread.id);
-        Logger.log(`Added label '${domain}' to thread ${thread.id} from '${extractSenderName(sender)}'`);
-        labeled = true;
-        added = true;
-        break;
+        if (domain) domains.add(domain);
+        else console.log(`Could not extract domain from '${sender}' in thread: ${thread.id}`);
       }
 
-      // Fallback so senderless threads stop re-matching has:nouserlabels every trigger.
-      if (!labeled) {
-        const label = getOrCreateLabelCached(labelMap, FALLBACK_SENDER_DOMAIN);
-        Gmail.Users.Threads.modify({ addLabelIds: [label.id] }, 'me', thread.id);
-        Logger.log(`Fallback-labeled thread ${thread.id} as '${FALLBACK_SENDER_DOMAIN}' (no usable sender header).`);
-        added = true;
-      }
+      const targetDomains = domains.size > 0 ? [...domains] : [FALLBACK_SENDER_DOMAIN];
+      const missing = targetDomains.filter(d => {
+        const existing = labelMap[d.toLowerCase()];
+        return !existing || !existingLabelIds.has(existing.id);
+      });
+      if (missing.length === 0) continue;
+
+      const addLabelIds = missing.map(d => getOrCreateLabelCached(labelMap, d).id);
+      Gmail.Users.Threads.modify({ addLabelIds }, 'me', thread.id);
+      Logger.log(`Added ${missing.length} domain label(s) to thread ${thread.id}: ${missing.join(', ')}`);
+      added = true;
     } catch (e) {
       console.error(`Failed to process thread ${thread.id}. Error: ${e.toString()}`);
     }
@@ -95,11 +97,6 @@ function getSenderFromHeaders(headers) {
 function extractDomain(sender) {
   const match = sender.match(/@([a-zA-Z0-9.-]+)/);
   return match ? match[1] : null;
-}
-
-function extractSenderName(sender) {
-  const match = sender.match(/^([^<]*)</);
-  return match ? match[1].trim() : sender;
 }
 
 // Sweeps user labels in pages of 50; resumes via PROPS.OFFSET across runs.

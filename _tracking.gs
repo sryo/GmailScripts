@@ -34,21 +34,30 @@ function buildSimpleTrackingIndex_(type) {
   return idx;
 }
 
-// Drops burndown_processed rows older than BURNDOWN_PROCESSED_TTL_DAYS. Pinged/drafted are
-// state-managed by their own loops (riff deletes drafted on send; pinged is a permanent marker).
+// Drops tracking rows past their per-type TTL. Drafted is state-managed by riff (deleted on send
+// or discard), so it has no TTL here. Pinged is dead weight once a thread crosses PING_EXPIRE_DAYS
+// (ping query stops matching it), with slack for late dismissals. Burndown is the digest dedup
+// window.
+const TRACKING_TTL_DAYS_BY_TYPE = {
+  [TRACKING_TYPE_PINGED]: PING_EXPIRE_DAYS,
+  [TRACKING_TYPE_BURNDOWN_PROCESSED]: BURNDOWN_PROCESSED_TTL_DAYS,
+};
+
 function pruneTracking_() {
   const data = getTrackingValues_();
   if (data.length < 2) return;
-  const cutoff = Date.now() - BURNDOWN_PROCESSED_TTL_DAYS * 24 * 3600 * 1000;
+  const now = Date.now();
   const rowsToDelete = [];
   for (let i = 1; i < data.length; i++) {
     const [, type, ts] = data[i];
-    if (type !== TRACKING_TYPE_BURNDOWN_PROCESSED) continue;
+    const ttl = TRACKING_TTL_DAYS_BY_TYPE[type];
+    if (!ttl) continue;
     const t = Date.parse(ts);
-    if (isNaN(t) || t < cutoff) rowsToDelete.push(i + 1);
+    if (isNaN(t) || t < now - ttl * 24 * 3600 * 1000) rowsToDelete.push(i + 1);
   }
   if (rowsToDelete.length > 0) {
     deleteRowsReverse(getClassifierTabs().tracking, rowsToDelete);
     invalidateTrackingValuesCache_();
+    Logger.log('🧹 Pruned ' + rowsToDelete.length + ' tracking rows.');
   }
 }

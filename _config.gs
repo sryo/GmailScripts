@@ -14,20 +14,16 @@ const LABEL_VOICE = '🫵 Voice';
 const PROTECTED_LABELS = [LABEL_AUTOREPLY, LABEL_PUBLIC, LABEL_PRETRASH, LABEL_PING, LABEL_STASH, LABEL_VOICE];
 
 // Per-label visibility applied at creation only; existing labels are left as-is.
-const LABEL_VIS_SHOW = 'labelShow';
-const LABEL_VIS_HIDE = 'labelHide';
-const MSG_VIS_SHOW = 'show';
-const MSG_VIS_HIDE = 'hide';
-
+// `label` is Gmail's labelListVisibility ('labelShow'/'labelHide'); `message` is messageListVisibility ('show'/'hide').
 const LABEL_VISIBILITY_POLICY = {
-  [LABEL_AUTOREPLY]: { label: LABEL_VIS_SHOW, message: MSG_VIS_SHOW },
-  [LABEL_PUBLIC]:    { label: LABEL_VIS_SHOW, message: MSG_VIS_SHOW },
-  [LABEL_PING]:      { label: LABEL_VIS_SHOW, message: MSG_VIS_SHOW },
-  [LABEL_VOICE]:     { label: LABEL_VIS_SHOW, message: MSG_VIS_SHOW },
-  [LABEL_STASH]:     { label: LABEL_VIS_SHOW, message: MSG_VIS_HIDE },
-  [LABEL_PRETRASH]:  { label: LABEL_VIS_SHOW, message: MSG_VIS_HIDE }
+  [LABEL_AUTOREPLY]: { label: 'labelShow', message: 'show' },
+  [LABEL_PUBLIC]:    { label: 'labelShow', message: 'show' },
+  [LABEL_PING]:      { label: 'labelShow', message: 'show' },
+  [LABEL_VOICE]:     { label: 'labelShow', message: 'show' },
+  [LABEL_STASH]:     { label: 'labelShow', message: 'hide' },
+  [LABEL_PRETRASH]:  { label: 'labelShow', message: 'hide' }
 };
-const LABEL_VISIBILITY_DEFAULT = { label: LABEL_VIS_HIDE, message: MSG_VIS_SHOW };
+const LABEL_VISIBILITY_DEFAULT = { label: 'labelHide', message: 'show' };
 
 function labelVisibility(name) {
   return LABEL_VISIBILITY_POLICY[name] || LABEL_VISIBILITY_DEFAULT;
